@@ -8,18 +8,15 @@
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 
-<div class="page">
-  <header class="top">
-    <div style="display:grid;gap:8px">
-      <div class="logo" aria-label="WordGraph">
-        <span style="background:var(--g)">W</span><span style="background:var(--y)">O</span><span style="background:var(--x)">R</span><span style="background:var(--g)">D</span><span class="gap"></span><span class="o">G</span><span class="o">R</span><span class="o">A</span><span class="o">P</span><span class="o">H</span>
-      </div>
-      <p class="tagline">The trees and graphs inside Wordle, word ladders, autocomplete and spell-check, running live on 2,187 common English words.</p>
-    </div>
-  </header>
-  <nav class="tabs" id="tabs" role="tablist" aria-label="Tools"></nav>
-  <main id="panels"></main>
-  <footer>Discrete Structures model · Unit III (trees) and Unit IV (graph theory). Word list: common 5-letter words from the public-domain ENABLE dictionary filtered by Wiktionary frequency lists.</footer>
+<div class="shell" id="shell" data-screen="home">
+  <section id="home" class="home"></section>
+  <section id="game" class="game">
+    <header class="game-top">
+      <button id="back" class="back" type="button" aria-label="Back to home">←</button>
+      <h1 id="game-title" class="game-title"></h1>
+    </header>
+    <main id="stage"></main>
+  </section>
 </div>
 
 <script src="data/words.js"></script>
@@ -30,6 +27,7 @@
 <script src="core/huffman.js"></script>
 <script src="core/solver.js"></script>
 <script src="ui/app.js"></script>
+<script src="ui/home.js"></script>
 <script src="ui/solver.js"></script>
 <script src="ui/ladder.js"></script>
 <script src="ui/trie.js"></script>

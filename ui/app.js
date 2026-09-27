@@ -1,4 +1,4 @@
-/* WordGraph UI: shared helpers, tab registry and start-up. */
+/* WordGraph UI: shared helpers, screen registry, home screen and navigation. */
 (function (WG) {
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const fmt = (n) => Number(n).toLocaleString('en-IN');
@@ -30,6 +30,21 @@
       return `<svg class="bars" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Branch sizes"><title>${n} branches, largest ${sizes[0]}</title>${s}</svg>`;
     },
     clean(v) { return String(v || '').toLowerCase().replace(/[^a-z]/g, '').slice(0, 5); },
+    /**
+     * A slide-up "How it works" sheet. Screens include this in their own render() and
+     * toggle it with their own `open` boolean, wiring clicks on data-act="how-open" / "how-close".
+     */
+    sheet(open, bodyHtml) {
+      return `<div class="sheet-overlay ${open ? 'open' : ''}" data-act="how-close"></div>
+      <aside class="sheet ${open ? 'open' : ''}" aria-label="How it works" aria-hidden="${open ? 'false' : 'true'}">
+        <div class="sheet-head"><h2>How it works</h2><button class="btn sm" type="button" data-act="how-close">Close</button></div>
+        <div class="sheet-body">${bodyHtml}</div>
+      </aside>`;
+    },
+    /** A small floating button that opens the How-it-works sheet. */
+    howBtn() {
+      return `<button class="how-btn" type="button" data-act="how-open">How it works</button>`;
+    },
   };
 
   WG.tabs = [];
@@ -45,23 +60,34 @@
     dl.innerHTML = WG.WORDS.map((w) => `<option value="${w.toUpperCase()}">`).join('');
     document.body.appendChild(dl);
 
-    const nav = document.getElementById('tabs'), host = document.getElementById('panels');
+    const shell = document.getElementById('shell');
+    const home = document.getElementById('home');
+    const back = document.getElementById('back');
+    const title = document.getElementById('game-title');
+    const stage = document.getElementById('stage');
     const mounted = {};
-    function show(id) {
-      WG.tabs.forEach((t) => {
-        const on = t.id === id;
-        nav.querySelector(`[data-tab="${t.id}"]`).setAttribute('aria-selected', on);
-        if (on && !mounted[t.id]) {
-          const el = document.createElement('section');
-          el.className = 'panel'; el.id = 'panel-' + t.id; el.setAttribute('role', 'tabpanel');
-          host.appendChild(el); t.mount(el); mounted[t.id] = el;
-        }
-        if (mounted[t.id]) mounted[t.id].hidden = !on;
-      });
+
+    WG.renderHome(home);
+
+    function go(id) {
+      const t = WG.tabs.find((x) => x.id === id);
+      if (!t) { shell.dataset.screen = 'home'; if (location.hash) location.hash = ''; return; }
+      shell.dataset.screen = 'game';
+      title.textContent = (WG.GAMES.find((g) => g.id === id) || t).name;
+      Object.keys(mounted).forEach((k) => { mounted[k].hidden = k !== id; });
+      if (!mounted[id]) {
+        const el = document.createElement('section');
+        el.className = 'panel'; el.id = 'panel-' + id;
+        stage.appendChild(el);
+        t.mount(el);
+        mounted[id] = el;
+      }
+      if (location.hash.slice(1) !== id) location.hash = id;
     }
-    nav.innerHTML = WG.tabs.map((t) => `<button class="tab" type="button" role="tab" data-tab="${t.id}" aria-selected="false">${esc(t.name)}<small>U-${t.unit}</small></button>`).join('');
-    nav.addEventListener('click', (e) => { const b = e.target.closest('[data-tab]'); if (b) show(b.dataset.tab); });
-    const hash = (location.hash || '').slice(1);
-    show(WG.tabs.some((t) => t.id === hash) ? hash : WG.tabs[0].id);
+
+    document.addEventListener('click', (e) => { const b = e.target.closest('[data-go]'); if (b) go(b.dataset.go); });
+    back.addEventListener('click', () => go(''));
+    window.addEventListener('hashchange', () => go((location.hash || '').slice(1)));
+    go((location.hash || '').slice(1));
   };
 })(self.WG = self.WG || {});

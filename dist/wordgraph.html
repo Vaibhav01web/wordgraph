@@ -41,24 +41,34 @@
 
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
-body { margin: 0; background: var(--ground); color: var(--ink); font: 16px/1.5 var(--body); padding-inline: 16px; padding-block: 20px 40px; }
-.page { max-width: 1180px; margin: 0 auto; display: grid; gap: 18px; }
+body { margin: 0; background: var(--ground); color: var(--ink); font: 17px/1.5 var(--body); padding-inline: 16px; padding-block: 20px 40px; }
+.shell { max-width: 1180px; margin: 0 auto; }
 
-/* Header */
-.top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; }
-.logo { display: flex; gap: 4px; flex-wrap: wrap; }
-.logo span { width: 34px; height: 38px; display: grid; place-items: center; font: 800 20px/1 var(--display); color: var(--tile-ink); border-radius: 4px; }
-.logo .gap { width: 8px; }
+/* Logo (used on Home) */
+.logo { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; }
+.logo span { width: 44px; height: 48px; display: grid; place-items: center; font: 800 24px/1 var(--display); color: var(--tile-ink); border-radius: 6px; }
+.logo .gap { width: 10px; }
 .logo .o { background: transparent; color: var(--ink); border: 2px solid var(--line); }
-.tagline { color: var(--muted); max-width: 46ch; font-size: 15px; }
 
-/* Tabs */
-.tabs { display: flex; flex-wrap: wrap; gap: 6px; border-bottom: 1px solid var(--line); padding-bottom: 12px; }
-.tab { font: 700 14px/1 var(--body); padding: 9px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; display: flex; gap: 8px; align-items: center; }
-.tab small { font: 600 10px/1 var(--mono); color: var(--muted); letter-spacing: .04em; }
-.tab:hover { border-color: var(--muted); }
-.tab[aria-selected="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
-.tab[aria-selected="true"] small { color: var(--surface); opacity: .75; }
+/* Home screen */
+.home { display: grid; gap: 32px; justify-items: center; padding-block: 40px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; width: 100%; max-width: 760px; }
+.game-card { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 14px; padding: 22px 20px; border-radius: 16px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; text-align: left; box-shadow: 0 1px 0 var(--line); }
+.game-card:hover { border-color: var(--blue); transform: translateY(-1px); }
+.game-card:active { transform: translateY(0); }
+.g-icon { font-size: 34px; line-height: 1; }
+.g-name { font: 800 19px/1.15 var(--display); letter-spacing: -.01em; }
+.examiners { font: 600 14px/1 var(--body); color: var(--muted); background: none; border: 0; cursor: pointer; padding: 8px; }
+.examiners:hover { color: var(--ink); text-decoration: underline; }
+
+/* Game screen */
+.game { display: none; }
+.shell[data-screen="game"] .home { display: none; }
+.shell[data-screen="game"] .game { display: block; }
+.game-top { display: flex; align-items: center; gap: 12px; padding-block: 6px 16px; }
+.back { width: 44px; height: 44px; display: grid; place-items: center; font-size: 22px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; flex: none; }
+.back:hover { border-color: var(--muted); }
+.game-title { margin: 0; font: 800 20px/1.2 var(--display); letter-spacing: -.01em; }
 
 /* Panels */
 .panel { display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr); gap: 18px; align-items: start; }
@@ -157,30 +167,44 @@ td.m { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 .bits { font: 13px/1.7 var(--mono); word-break: break-all; background: var(--sunk); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; }
 .bits i { font-style: normal; padding: 1px 2px; border-radius: 2px; }
 .bits i:nth-child(odd) { background: var(--tint); }
-footer { color: var(--muted); font-size: 13px; }
 @media (prefers-reduced-motion: reduce) { .tile.pop { animation: none; } }
 
-/* Decision tree drawer (solver tab) */
+/* Decision tree drawer (kept until each game screen is migrated to the .sheet component below) */
 .drawer-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.4); opacity: 0; visibility: hidden; transition: opacity .25s ease, visibility 0s linear .25s; z-index: 40; }
 .drawer-overlay.open { opacity: 1; visibility: visible; transition: opacity .25s ease; }
 .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(480px, 100vw); background: var(--surface); border-left: 1px solid var(--line); box-shadow: -12px 0 32px rgba(0,0,0,.18); transform: translateX(100%); transition: transform .28s ease; z-index: 41; overflow-y: auto; padding: 18px; display: grid; gap: 14px; align-content: start; }
 .drawer.open { transform: translateX(0); }
 .drawer-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; position: sticky; top: -18px; margin: -18px -18px 0; padding: 18px 18px 10px; background: var(--surface); border-bottom: 1px solid var(--line); }
 @media (prefers-reduced-motion: reduce) { .drawer, .drawer-overlay { transition: none; } }
+
+/* How-it-works sheet: a bottom sheet holding the viva maths, hidden by default on every game screen */
+.how-btn { position: fixed; right: 16px; bottom: 16px; font: 700 13px/1 var(--body); padding: 11px 16px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,.12); z-index: 30; }
+.how-btn:hover { border-color: var(--muted); }
+.sheet-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.4); opacity: 0; visibility: hidden; transition: opacity .25s ease, visibility 0s linear .25s; z-index: 40; }
+.sheet-overlay.open { opacity: 1; visibility: visible; transition: opacity .25s ease; }
+.sheet { position: fixed; left: 0; right: 0; bottom: 0; max-height: 82vh; margin: 0 auto; max-width: 720px; background: var(--surface); border: 1px solid var(--line); border-bottom: none; border-radius: 16px 16px 0 0; box-shadow: 0 -12px 32px rgba(0,0,0,.18); transform: translateY(100%); transition: transform .28s ease; z-index: 41; overflow-y: auto; display: grid; gap: 14px; align-content: start; }
+.sheet.open { transform: translateY(0); }
+.sheet-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; position: sticky; top: 0; padding: 16px 18px; background: var(--surface); border-bottom: 1px solid var(--line); }
+.sheet-head h2 { font-size: 20px; }
+.sheet-body { display: grid; gap: 14px; padding: 4px 18px 20px; }
+@media (prefers-reduced-motion: reduce) { .sheet, .sheet-overlay { transition: none; } }
+
+/* Celebration burst on a win */
+.confetti { position: fixed; inset: 0; pointer-events: none; z-index: 50; overflow: hidden; }
+.confetti i { position: absolute; top: -20px; width: 9px; height: 9px; border-radius: 2px; animation: confetti-fall 1.5s ease-in forwards; }
+@keyframes confetti-fall { to { transform: translateY(100vh) rotate(360deg); opacity: .2; } }
+@media (prefers-reduced-motion: reduce) { .confetti { display: none; } }
 </style>
 
-<div class="page">
-  <header class="top">
-    <div style="display:grid;gap:8px">
-      <div class="logo" aria-label="WordGraph">
-        <span style="background:var(--g)">W</span><span style="background:var(--y)">O</span><span style="background:var(--x)">R</span><span style="background:var(--g)">D</span><span class="gap"></span><span class="o">G</span><span class="o">R</span><span class="o">A</span><span class="o">P</span><span class="o">H</span>
-      </div>
-      <p class="tagline">The trees and graphs inside Wordle, word ladders, autocomplete and spell-check, running live on 2,187 common English words.</p>
-    </div>
-  </header>
-  <nav class="tabs" id="tabs" role="tablist" aria-label="Tools"></nav>
-  <main id="panels"></main>
-  <footer>Discrete Structures model · Unit III (trees) and Unit IV (graph theory). Word list: common 5-letter words from the public-domain ENABLE dictionary filtered by Wiktionary frequency lists.</footer>
+<div class="shell" id="shell" data-screen="home">
+  <section id="home" class="home"></section>
+  <section id="game" class="game">
+    <header class="game-top">
+      <button id="back" class="back" type="button" aria-label="Back to home">←</button>
+      <h1 id="game-title" class="game-title"></h1>
+    </header>
+    <main id="stage"></main>
+  </section>
 </div>
 
 <script>
@@ -602,7 +626,7 @@ self.WG.META = {"first":"raise","firstWorst":180,"firstGroups":130,"tree":{"dist
 })(self.WG = self.WG || {});
 </script>
 <script>
-/* WordGraph UI: shared helpers, tab registry and start-up. */
+/* WordGraph UI: shared helpers, screen registry, home screen and navigation. */
 (function (WG) {
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const fmt = (n) => Number(n).toLocaleString('en-IN');
@@ -634,6 +658,21 @@ self.WG.META = {"first":"raise","firstWorst":180,"firstGroups":130,"tree":{"dist
       return `<svg class="bars" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Branch sizes"><title>${n} branches, largest ${sizes[0]}</title>${s}</svg>`;
     },
     clean(v) { return String(v || '').toLowerCase().replace(/[^a-z]/g, '').slice(0, 5); },
+    /**
+     * A slide-up "How it works" sheet. Screens include this in their own render() and
+     * toggle it with their own `open` boolean, wiring clicks on data-act="how-open" / "how-close".
+     */
+    sheet(open, bodyHtml) {
+      return `<div class="sheet-overlay ${open ? 'open' : ''}" data-act="how-close"></div>
+      <aside class="sheet ${open ? 'open' : ''}" aria-label="How it works" aria-hidden="${open ? 'false' : 'true'}">
+        <div class="sheet-head"><h2>How it works</h2><button class="btn sm" type="button" data-act="how-close">Close</button></div>
+        <div class="sheet-body">${bodyHtml}</div>
+      </aside>`;
+    },
+    /** A small floating button that opens the How-it-works sheet. */
+    howBtn() {
+      return `<button class="how-btn" type="button" data-act="how-open">How it works</button>`;
+    },
   };
 
   WG.tabs = [];
@@ -649,24 +688,57 @@ self.WG.META = {"first":"raise","firstWorst":180,"firstGroups":130,"tree":{"dist
     dl.innerHTML = WG.WORDS.map((w) => `<option value="${w.toUpperCase()}">`).join('');
     document.body.appendChild(dl);
 
-    const nav = document.getElementById('tabs'), host = document.getElementById('panels');
+    const shell = document.getElementById('shell');
+    const home = document.getElementById('home');
+    const back = document.getElementById('back');
+    const title = document.getElementById('game-title');
+    const stage = document.getElementById('stage');
     const mounted = {};
-    function show(id) {
-      WG.tabs.forEach((t) => {
-        const on = t.id === id;
-        nav.querySelector(`[data-tab="${t.id}"]`).setAttribute('aria-selected', on);
-        if (on && !mounted[t.id]) {
-          const el = document.createElement('section');
-          el.className = 'panel'; el.id = 'panel-' + t.id; el.setAttribute('role', 'tabpanel');
-          host.appendChild(el); t.mount(el); mounted[t.id] = el;
-        }
-        if (mounted[t.id]) mounted[t.id].hidden = !on;
-      });
+
+    WG.renderHome(home);
+
+    function go(id) {
+      const t = WG.tabs.find((x) => x.id === id);
+      if (!t) { shell.dataset.screen = 'home'; if (location.hash) location.hash = ''; return; }
+      shell.dataset.screen = 'game';
+      title.textContent = (WG.GAMES.find((g) => g.id === id) || t).name;
+      Object.keys(mounted).forEach((k) => { mounted[k].hidden = k !== id; });
+      if (!mounted[id]) {
+        const el = document.createElement('section');
+        el.className = 'panel'; el.id = 'panel-' + id;
+        stage.appendChild(el);
+        t.mount(el);
+        mounted[id] = el;
+      }
+      if (location.hash.slice(1) !== id) location.hash = id;
     }
-    nav.innerHTML = WG.tabs.map((t) => `<button class="tab" type="button" role="tab" data-tab="${t.id}" aria-selected="false">${esc(t.name)}<small>U-${t.unit}</small></button>`).join('');
-    nav.addEventListener('click', (e) => { const b = e.target.closest('[data-tab]'); if (b) show(b.dataset.tab); });
-    const hash = (location.hash || '').slice(1);
-    show(WG.tabs.some((t) => t.id === hash) ? hash : WG.tabs[0].id);
+
+    document.addEventListener('click', (e) => { const b = e.target.closest('[data-go]'); if (b) go(b.dataset.go); });
+    back.addEventListener('click', () => go(''));
+    window.addEventListener('hashchange', () => go((location.hash || '').slice(1)));
+    go((location.hash || '').slice(1));
+  };
+})(self.WG = self.WG || {});
+</script>
+<script>
+/* Home screen: the WordGraph logo, one big card per game, and the examiners' link. */
+(function (WG) {
+  const GAMES = [
+    { id: 'solver', icon: '🟩', name: 'Guess my word' },
+    { id: 'ladder', icon: '🪜', name: 'Word ladder' },
+    { id: 'trie', icon: '⌨️', name: 'Autocomplete' },
+    { id: 'critical', icon: '🕸️', name: 'Break the network' },
+    { id: 'huffman', icon: '🗜️', name: 'Squeeze it' },
+  ];
+  WG.GAMES = GAMES;
+
+  WG.renderHome = function (root) {
+    root.innerHTML = `
+      <div class="logo" aria-label="WordGraph">
+        <span style="background:var(--g)">W</span><span style="background:var(--y)">O</span><span style="background:var(--x)">R</span><span style="background:var(--g)">D</span><span class="gap"></span><span class="o">G</span><span class="o">R</span><span class="o">A</span><span class="o">P</span><span class="o">H</span>
+      </div>
+      <div class="cards">${GAMES.map((g) => `<button class="game-card" type="button" data-go="${g.id}"><span class="g-icon">${g.icon}</span><span class="g-name">${WG.ui.esc(g.name)}</span></button>`).join('')}</div>
+      <button class="examiners" type="button" data-go="facts">For examiners →</button>`;
   };
 })(self.WG = self.WG || {});
 </script>
