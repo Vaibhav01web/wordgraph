@@ -1,5 +1,5 @@
 <!-- WordGraph: the maths behind Wordle and word games. Open this file in a browser; no server needed. -->
-<title>WordGraph</title>
+<title>Wordit</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -171,30 +171,36 @@ td.m { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 body.full { padding: 0; }
 body.full .shell { max-width: none; }
 .shell[data-chrome="off"] .game-top { display: none; }
-.gs { min-height: 100dvh; display: grid; grid-template-rows: auto 1fr auto; gap: clamp(8px, 1.6vh, 18px); padding: 12px 16px calc(18px + env(safe-area-inset-bottom)); }
-.gs-top { display: grid; grid-template-columns: auto 1fr auto auto; grid-template-areas: "back title seg how"; align-items: center; gap: 10px; }
-.gs-top .back-btn { grid-area: back; justify-self: start; }
-.gs-title { grid-area: title; margin: 0; font: 800 clamp(18px, 2.4vw, 28px)/1.1 var(--display); letter-spacing: -.01em; text-align: center; }
-.gs-top .seg { grid-area: seg; }
-.gs-top .how-icon { grid-area: how; justify-self: end; }
-@media (max-width: 680px) {
-  .gs-top { grid-template-columns: auto 1fr auto; grid-template-areas: "back title how" "seg seg seg"; row-gap: 10px; }
-  .gs-top .seg { justify-self: center; }
-}
-.gs-main { display: grid; gap: clamp(10px, 2.4vh, 26px); justify-items: center; align-content: center; }
+.gs { --tsz: clamp(38px, min(7.9vh, 13vw), 72px); --tgap: calc(var(--tsz) * .085);
+  min-height: 100dvh; display: grid; grid-template-rows: auto 1fr auto; gap: clamp(8px, 1.6vh, 18px); padding: 12px 16px calc(18px + env(safe-area-inset-bottom)); }
+.gs-top { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; }
+.gs-title { margin: 0; font: 800 clamp(18px, 2.4vw, 28px)/1.1 var(--display); letter-spacing: -.01em; text-align: center; }
+.gs-main { display: grid; gap: clamp(10px, 2.2vh, 24px); justify-items: center; align-content: center; }
 .hint { color: var(--muted); font-size: clamp(14px, 1.5vw, 18px); text-align: center; min-height: 1.4em; }
 .gs-bottom { display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap; }
 .icon-btn { width: 46px; height: 46px; display: grid; place-items: center; font: 400 20px/1 var(--body); border-radius: 50%; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; flex: none; }
 .icon-btn:hover { border-color: var(--muted); }
 .icon-btn:disabled { opacity: .35; cursor: default; }
+.icon-btn.tall { width: var(--tsz); height: var(--tsz); font-size: calc(var(--tsz) * .4); }
 .big-btn { font: 800 clamp(17px, 1.9vw, 21px)/1 var(--display); padding: 17px 48px; border-radius: 12px; border: 0; background: var(--ink); color: var(--surface); cursor: pointer; }
 .big-btn:hover:not(:disabled) { filter: brightness(1.15); }
 .big-btn:disabled { opacity: .35; cursor: default; }
-.seg.tiny button { font: 700 12px/1 var(--body); padding: 8px 10px; }
-input.word-in { font: 700 clamp(18px, 2.2vw, 24px)/1 var(--mono); text-transform: uppercase; letter-spacing: .1em; text-align: center; width: 7.5ch; padding: 15px 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); }
+.big-btn.tall { height: var(--tsz); padding-block: 0; }
+
+/* Big mode switch, centred under the title */
+.mode-switch { display: grid; grid-template-columns: repeat(2, minmax(180px, 1fr)); width: 100%; max-width: 460px; border: 2px solid var(--line); border-radius: 12px; overflow: hidden; }
+.mode-switch button { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 10px 14px; font: 700 18px/1.15 var(--body); border: 0; background: var(--surface); color: var(--muted); cursor: pointer; }
+.mode-switch button:hover { color: var(--ink); }
+.mode-switch button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+.ms-icon { font-size: 19px; line-height: 1; }
+@media (max-width: 480px) {
+  .mode-switch { grid-template-columns: repeat(2, 1fr); max-width: none; }
+  .mode-switch button { font-size: 15px; padding: 10px 6px; gap: 5px; }
+  .ms-icon { font-size: 17px; }
+}
 
 /* Wordle board */
-.wboard { --tsz: clamp(38px, min(8.2vh, 13vw), 72px); --tgap: calc(var(--tsz) * .085); display: grid; gap: var(--tgap); }
+.wboard { display: grid; gap: var(--tgap); }
 .wrow { display: grid; grid-template-columns: repeat(5, var(--tsz)); gap: var(--tgap); }
 .wtile { width: var(--tsz); height: var(--tsz); display: grid; place-items: center; font: 800 calc(var(--tsz) * .46)/1 var(--display); text-transform: uppercase; color: var(--tile-ink); background: var(--x); border: 0; border-radius: calc(var(--tsz) * .08); padding: 0; }
 .wtile.g { background: var(--g); } .wtile.y { background: var(--y); } .wtile.x { background: var(--x); }
@@ -204,10 +210,24 @@ input.word-in { font: 700 clamp(18px, 2.2vw, 24px)/1 var(--mono); text-transform
 .wtile.pop { animation: flip .35s ease-out both; }
 @media (prefers-reduced-motion: reduce) { .wtile.pop { animation: none; } }
 
+/* Secret-word entry: five board-sized tiles over one invisible real input */
+.tile-input { position: relative; display: grid; grid-template-columns: repeat(5, var(--tsz)); gap: var(--tgap); flex: none; }
+.tile-input input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; margin: 0; padding: 0; border: 0; background: none; font: inherit; cursor: pointer; z-index: 2; }
+.wtile.in { color: var(--ink); background: transparent; border: 2px solid var(--line); }
+.wtile.in.filled { border-color: var(--muted); background: var(--surface); }
+.tile-input:focus-within .wtile.in.next { border-color: var(--blue); box-shadow: 0 0 0 3px var(--tint); }
+
 /* Big counter */
 .counter { font: 800 clamp(28px, min(5.4vw, 6.5vh), 56px)/1 var(--display); font-variant-numeric: tabular-nums; letter-spacing: -.02em; text-align: center; }
 .counter .arrow { color: var(--muted); margin-inline: .1em; }
 .counter small { display: block; font: 400 clamp(12px, 1.3vw, 15px)/1.3 var(--body); color: var(--muted); letter-spacing: 0; margin-top: 6px; }
+
+/* Short laptop screens: keep the whole game above the fold */
+@media (max-height: 700px) {
+  .gs { padding-top: 8px; gap: 8px; }
+  .gs-main { gap: 10px; }
+  .counter small { margin-top: 2px; }
+}
 
 /* Friendly popup (tapping-mistake fix) */
 .popup { position: fixed; left: 50%; bottom: 100px; transform: translateX(-50%); width: min(420px, calc(100vw - 32px)); background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.2); padding: 16px 18px; display: grid; gap: 10px; z-index: 35; }
@@ -776,7 +796,7 @@ self.WG.META = {"first":"raise","firstWorst":180,"firstGroups":130,"tree":{"dist
 })(self.WG = self.WG || {});
 </script>
 <script>
-/* Home screen: the WordGraph logo, one big card per game, and the examiners' link. */
+/* Home screen: the Wordit logo, one big card per game, and the examiners' link. */
 (function (WG) {
   const GAMES = [
     { id: 'solver', icon: '🟩', name: 'Guess my word' },
@@ -789,8 +809,8 @@ self.WG.META = {"first":"raise","firstWorst":180,"firstGroups":130,"tree":{"dist
 
   WG.renderHome = function (root) {
     root.innerHTML = `
-      <div class="logo" aria-label="WordGraph">
-        <span style="background:var(--g)">W</span><span style="background:var(--y)">O</span><span style="background:var(--x)">R</span><span style="background:var(--g)">D</span><span class="gap"></span><span class="o">G</span><span class="o">R</span><span class="o">A</span><span class="o">P</span><span class="o">H</span>
+      <div class="logo" aria-label="Wordit">
+        <span style="background:var(--g)">W</span><span style="background:var(--y)">O</span><span style="background:var(--x)">R</span><span style="background:var(--g)">D</span><span class="gap"></span><span class="o">I</span><span class="o">T</span>
       </div>
       <div class="cards">${GAMES.map((g) => `<button class="game-card" type="button" data-go="${g.id}"><span class="g-icon">${g.icon}</span><span class="g-name">${WG.ui.esc(g.name)}</span></button>`).join('')}</div>
       <button class="examiners" type="button" data-go="facts">For examiners →</button>`;
@@ -924,15 +944,43 @@ self.WG.META = {"first":"raise","firstWorst":180,"firstGroups":130,"tree":{"dist
       return S.mode === 'think' ? 'Pick a secret word. Tap tiles to colour them.' : 'Type a word and watch it get solved.';
     }
 
+    function modeSwitch() {
+      return `<div class="mode-switch" role="group" aria-label="Mode">
+        <button type="button" data-mode="think" aria-pressed="${S.mode === 'think'}"><span class="ms-icon" aria-hidden="true">💡</span>You pick a word</button>
+        <button type="button" data-mode="watch" aria-pressed="${S.mode === 'watch'}"><span class="ms-icon" aria-hidden="true">🤖</span>Watch it solve</button>
+      </div>`;
+    }
+
+    /** Five input tiles over one real (invisible) input, so phone keyboards still open. */
+    function secretTiles() {
+      const w = S.secret.toUpperCase();
+      const tiles = [0, 1, 2, 3, 4].map((i) => {
+        const ch = w[i] || '';
+        return `<span class="wtile in ${ch ? 'filled' : 'empty'}${!ch && i === w.length ? ' next' : ''}" data-in-tile="${i}" aria-hidden="true">${U.esc(ch)}</span>`;
+      }).join('');
+      return `<div class="tile-input">
+        <input id="sv-secret" type="text" maxlength="5" list="wordlist" value="${U.esc(w)}" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Secret word">
+        ${tiles}</div>`;
+    }
+
+    function paintTiles() {
+      const w = S.secret.toUpperCase();
+      root.querySelectorAll('[data-in-tile]').forEach((el, i) => {
+        const ch = w[i] || '';
+        el.textContent = ch;
+        el.className = `wtile in ${ch ? 'filled' : 'empty'}${!ch && i === w.length ? ' next' : ''}`;
+      });
+    }
+
     function bottom() {
       if (S.mode === 'think') {
         return `<button class="icon-btn" type="button" data-act="undo" aria-label="Undo last guess" title="Undo" ${S.rows.length ? '' : 'disabled'}>↶</button>
           <button class="big-btn" type="button" data-act="next" ${S.solved ? 'disabled' : ''}>Next</button>
           <button class="icon-btn" type="button" data-act="new" aria-label="New game" title="New game">⟳</button>`;
       }
-      return `<input id="sv-secret" class="word-in" type="text" maxlength="5" list="wordlist" value="${U.esc(S.secret.toUpperCase())}" autocomplete="off" aria-label="Secret word">
-        <button class="big-btn" type="button" data-act="solve">Solve it</button>
-        <button class="icon-btn" type="button" data-act="random" aria-label="Random word" title="Random word">🎲</button>`;
+      return `${secretTiles()}
+        <button class="big-btn tall" type="button" data-act="solve">Solve it</button>
+        <button class="icon-btn tall" type="button" data-act="random" aria-label="Random word" title="Random word">🎲</button>`;
     }
 
     /** Everything a viva needs: the concept, the tree, the numbers and the complexity. */
@@ -968,17 +1016,15 @@ self.WG.META = {"first":"raise","firstWorst":180,"firstGroups":130,"tree":{"dist
     }
 
     function render() {
+      const keepFocus = document.activeElement && document.activeElement.id === 'sv-secret';
       root.innerHTML = `<div class="gs">
         <header class="gs-top">
           <button class="icon-btn back-btn" type="button" data-go="" aria-label="Back to home">←</button>
           <h1 class="gs-title">Guess my word</h1>
-          <div class="seg tiny" role="group" aria-label="Mode">
-            <button type="button" data-mode="think" aria-pressed="${S.mode === 'think'}">You pick a word</button>
-            <button type="button" data-mode="watch" aria-pressed="${S.mode === 'watch'}">Watch it solve</button>
-          </div>
           <button class="icon-btn how-icon" type="button" data-act="how-open" aria-label="How it works" title="How it works">?</button>
         </header>
         <main class="gs-main">
+          ${modeSwitch()}
           <p class="hint">${U.esc(hint())}</p>
           ${board()}
           ${counter()}
@@ -988,6 +1034,10 @@ self.WG.META = {"first":"raise","firstWorst":180,"firstGroups":130,"tree":{"dist
         ${how()}
       </div>`;
       S.animate = false; S.flip = -1;
+      if (keepFocus) {
+        const i = root.querySelector('#sv-secret');
+        if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); }
+      }
       if (S.won) { S.won = false; setTimeout(U.celebrate, 350); }
     }
 
@@ -1011,6 +1061,15 @@ self.WG.META = {"first":"raise","firstWorst":180,"firstGroups":130,"tree":{"dist
         else watch(v);
       } else if (act === 'random') watch(WG.WORDS[Math.floor(Math.random() * WG.WORDS.length)]);
       render();
+    });
+    // Repaint the tiles in place: a full render would rebuild the input and drop the caret.
+    root.addEventListener('input', (e) => {
+      if (e.target.id !== 'sv-secret') return;
+      S.secret = U.clean(e.target.value);
+      const up = S.secret.toUpperCase();
+      if (e.target.value !== up) e.target.value = up;
+      if (S.msg) { S.msg = ''; S.fix = null; root.querySelector('.popup')?.remove(); }
+      paintTiles();
     });
     root.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && e.target.id === 'sv-secret') root.querySelector('[data-act="solve"]').click();
