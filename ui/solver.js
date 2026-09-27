@@ -124,15 +124,43 @@
       return S.mode === 'think' ? 'Pick a secret word. Tap tiles to colour them.' : 'Type a word and watch it get solved.';
     }
 
+    function modeSwitch() {
+      return `<div class="mode-switch" role="group" aria-label="Mode">
+        <button type="button" data-mode="think" aria-pressed="${S.mode === 'think'}"><span class="ms-icon" aria-hidden="true">💡</span>You pick a word</button>
+        <button type="button" data-mode="watch" aria-pressed="${S.mode === 'watch'}"><span class="ms-icon" aria-hidden="true">🤖</span>Watch it solve</button>
+      </div>`;
+    }
+
+    /** Five input tiles over one real (invisible) input, so phone keyboards still open. */
+    function secretTiles() {
+      const w = S.secret.toUpperCase();
+      const tiles = [0, 1, 2, 3, 4].map((i) => {
+        const ch = w[i] || '';
+        return `<span class="wtile in ${ch ? 'filled' : 'empty'}${!ch && i === w.length ? ' next' : ''}" data-in-tile="${i}" aria-hidden="true">${U.esc(ch)}</span>`;
+      }).join('');
+      return `<div class="tile-input">
+        <input id="sv-secret" type="text" maxlength="5" list="wordlist" value="${U.esc(w)}" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Secret word">
+        ${tiles}</div>`;
+    }
+
+    function paintTiles() {
+      const w = S.secret.toUpperCase();
+      root.querySelectorAll('[data-in-tile]').forEach((el, i) => {
+        const ch = w[i] || '';
+        el.textContent = ch;
+        el.className = `wtile in ${ch ? 'filled' : 'empty'}${!ch && i === w.length ? ' next' : ''}`;
+      });
+    }
+
     function bottom() {
       if (S.mode === 'think') {
         return `<button class="icon-btn" type="button" data-act="undo" aria-label="Undo last guess" title="Undo" ${S.rows.length ? '' : 'disabled'}>↶</button>
           <button class="big-btn" type="button" data-act="next" ${S.solved ? 'disabled' : ''}>Next</button>
           <button class="icon-btn" type="button" data-act="new" aria-label="New game" title="New game">⟳</button>`;
       }
-      return `<input id="sv-secret" class="word-in" type="text" maxlength="5" list="wordlist" value="${U.esc(S.secret.toUpperCase())}" autocomplete="off" aria-label="Secret word">
-        <button class="big-btn" type="button" data-act="solve">Solve it</button>
-        <button class="icon-btn" type="button" data-act="random" aria-label="Random word" title="Random word">🎲</button>`;
+      return `${secretTiles()}
+        <button class="big-btn tall" type="button" data-act="solve">Solve it</button>
+        <button class="icon-btn tall" type="button" data-act="random" aria-label="Random word" title="Random word">🎲</button>`;
     }
 
     /** Everything a viva needs: the concept, the tree, the numbers and the complexity. */
@@ -168,17 +196,15 @@
     }
 
     function render() {
+      const keepFocus = document.activeElement && document.activeElement.id === 'sv-secret';
       root.innerHTML = `<div class="gs">
         <header class="gs-top">
           <button class="icon-btn back-btn" type="button" data-go="" aria-label="Back to home">←</button>
           <h1 class="gs-title">Guess my word</h1>
-          <div class="seg tiny" role="group" aria-label="Mode">
-            <button type="button" data-mode="think" aria-pressed="${S.mode === 'think'}">You pick a word</button>
-            <button type="button" data-mode="watch" aria-pressed="${S.mode === 'watch'}">Watch it solve</button>
-          </div>
           <button class="icon-btn how-icon" type="button" data-act="how-open" aria-label="How it works" title="How it works">?</button>
         </header>
         <main class="gs-main">
+          ${modeSwitch()}
           <p class="hint">${U.esc(hint())}</p>
           ${board()}
           ${counter()}
@@ -188,6 +214,10 @@
         ${how()}
       </div>`;
       S.animate = false; S.flip = -1;
+      if (keepFocus) {
+        const i = root.querySelector('#sv-secret');
+        if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); }
+      }
       if (S.won) { S.won = false; setTimeout(U.celebrate, 350); }
     }
 
@@ -211,6 +241,15 @@
         else watch(v);
       } else if (act === 'random') watch(WG.WORDS[Math.floor(Math.random() * WG.WORDS.length)]);
       render();
+    });
+    // Repaint the tiles in place: a full render would rebuild the input and drop the caret.
+    root.addEventListener('input', (e) => {
+      if (e.target.id !== 'sv-secret') return;
+      S.secret = U.clean(e.target.value);
+      const up = S.secret.toUpperCase();
+      if (e.target.value !== up) e.target.value = up;
+      if (S.msg) { S.msg = ''; S.fix = null; root.querySelector('.popup')?.remove(); }
+      paintTiles();
     });
     root.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && e.target.id === 'sv-secret') root.querySelector('[data-act="solve"]').click();
