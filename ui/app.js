@@ -45,6 +45,20 @@
     howBtn() {
       return `<button class="how-btn" type="button" data-act="how-open">How it works</button>`;
     },
+    /** Confetti burst for a win. */
+    celebrate() {
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      const cols = ['var(--g)', 'var(--y)', 'var(--blue)', 'var(--red)'];
+      const box = document.createElement('div');
+      box.className = 'confetti';
+      let s = '';
+      for (let i = 0; i < 44; i++) {
+        s += `<i style="left:${(Math.random() * 100).toFixed(1)}%;background:${cols[i % 4]};animation-delay:${(Math.random() * .5).toFixed(2)}s;animation-duration:${(1.1 + Math.random() * .7).toFixed(2)}s"></i>`;
+      }
+      box.innerHTML = s;
+      document.body.appendChild(box);
+      setTimeout(() => box.remove(), 2400);
+    },
   };
 
   WG.tabs = [];
@@ -71,13 +85,16 @@
 
     function go(id) {
       const t = WG.tabs.find((x) => x.id === id);
-      if (!t) { shell.dataset.screen = 'home'; if (location.hash) location.hash = ''; return; }
+      if (!t) { shell.dataset.screen = 'home'; document.body.classList.remove('full'); if (location.hash) location.hash = ''; return; }
       shell.dataset.screen = 'game';
+      // A `full` screen draws its own top bar and fills the viewport, so hide the shell's chrome.
+      shell.dataset.chrome = t.full ? 'off' : 'on';
+      document.body.classList.toggle('full', !!t.full);
       title.textContent = (WG.GAMES.find((g) => g.id === id) || t).name;
       Object.keys(mounted).forEach((k) => { mounted[k].hidden = k !== id; });
       if (!mounted[id]) {
         const el = document.createElement('section');
-        el.className = 'panel'; el.id = 'panel-' + id;
+        el.className = t.full ? 'screen' : 'panel'; el.id = 'panel-' + id;
         stage.appendChild(el);
         t.mount(el);
         mounted[id] = el;
