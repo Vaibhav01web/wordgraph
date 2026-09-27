@@ -1,0 +1,39 @@
+<!doctype html>
+<meta charset="utf-8">
+<!-- WordGraph: the maths behind Wordle and word games. Open this file in a browser; no server needed. -->
+<title>WordGraph</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+
+<div class="page">
+  <header class="top">
+    <div style="display:grid;gap:8px">
+      <div class="logo" aria-label="WordGraph">
+        <span style="background:var(--g)">W</span><span style="background:var(--y)">O</span><span style="background:var(--x)">R</span><span style="background:var(--g)">D</span><span class="gap"></span><span class="o">G</span><span class="o">R</span><span class="o">A</span><span class="o">P</span><span class="o">H</span>
+      </div>
+      <p class="tagline">The trees and graphs inside Wordle, word ladders, autocomplete and spell-check, running live on 2,187 common English words.</p>
+    </div>
+  </header>
+  <nav class="tabs" id="tabs" role="tablist" aria-label="Tools"></nav>
+  <main id="panels"></main>
+  <footer>Discrete Structures model · Unit III (trees) and Unit IV (graph theory). Word list: common 5-letter words from the public-domain ENABLE dictionary filtered by Wiktionary frequency lists.</footer>
+</div>
+
+<script src="data/words.js"></script>
+<script src="core/graph.js"></script>
+<script src="core/dijkstra.js"></script>
+<script src="core/bridges.js"></script>
+<script src="core/trie.js"></script>
+<script src="core/huffman.js"></script>
+<script src="core/solver.js"></script>
+<script src="ui/app.js"></script>
+<script src="ui/solver.js"></script>
+<script src="ui/ladder.js"></script>
+<script src="ui/trie.js"></script>
+<script src="ui/critical.js"></script>
+<script src="ui/huffman.js"></script>
+<script src="ui/facts.js"></script>
+<script>WG.start();</script>

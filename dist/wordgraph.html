@@ -1,0 +1,1287 @@
+<!-- WordGraph: the maths behind Wordle and word games. Open this file in a browser; no server needed. -->
+<title>WordGraph</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ground: #F2F3F5;
+  --surface: #FFFFFF;
+  --sunk: #F6F7F9;
+  --ink: #15171C;
+  --muted: #5C636F;
+  --line: #D9DCE2;
+  --g: #4A9A5A;
+  --y: #C79E26;
+  --x: #7B808A;
+  --blue: #2E5BE0;
+  --red: #CF4236;
+  --tint: rgba(46, 91, 224, .10);
+  --tint-red: rgba(207, 66, 54, .12);
+  --tint-y: rgba(199, 158, 38, .16);
+  --tile-ink: #FFFFFF;
+  --display: 'Archivo', 'Arial Black', system-ui, sans-serif;
+  --body: 'Atkinson Hyperlegible', system-ui, -apple-system, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --ground: #111317; --surface: #1A1C21; --sunk: #15171B; --ink: #E7E9ED; --muted: #99A0AC; --line: #2D3139;
+    --g: #55A864; --y: #D2AB36; --x: #5B606A; --blue: #7D9BFF; --red: #F0776B;
+    --tint: rgba(125, 155, 255, .16); --tint-red: rgba(240, 119, 107, .18); --tint-y: rgba(210, 171, 54, .18);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ground: #111317; --surface: #1A1C21; --sunk: #15171B; --ink: #E7E9ED; --muted: #99A0AC; --line: #2D3139;
+  --g: #55A864; --y: #D2AB36; --x: #5B606A; --blue: #7D9BFF; --red: #F0776B;
+  --tint: rgba(125, 155, 255, .16); --tint-red: rgba(240, 119, 107, .18); --tint-y: rgba(210, 171, 54, .18);
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--ground); color: var(--ink); font: 16px/1.5 var(--body); padding-inline: 16px; padding-block: 20px 40px; }
+.page { max-width: 1180px; margin: 0 auto; display: grid; gap: 18px; }
+
+/* Header */
+.top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; }
+.logo { display: flex; gap: 4px; flex-wrap: wrap; }
+.logo span { width: 34px; height: 38px; display: grid; place-items: center; font: 800 20px/1 var(--display); color: var(--tile-ink); border-radius: 4px; }
+.logo .gap { width: 8px; }
+.logo .o { background: transparent; color: var(--ink); border: 2px solid var(--line); }
+.tagline { color: var(--muted); max-width: 46ch; font-size: 15px; }
+
+/* Tabs */
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; border-bottom: 1px solid var(--line); padding-bottom: 12px; }
+.tab { font: 700 14px/1 var(--body); padding: 9px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; display: flex; gap: 8px; align-items: center; }
+.tab small { font: 600 10px/1 var(--mono); color: var(--muted); letter-spacing: .04em; }
+.tab:hover { border-color: var(--muted); }
+.tab[aria-selected="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.tab[aria-selected="true"] small { color: var(--surface); opacity: .75; }
+
+/* Panels */
+.panel { display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr); gap: 18px; align-items: start; }
+@media (max-width: 880px) { .panel { grid-template-columns: minmax(0, 1fr); } }
+#panel-solver.panel { grid-template-columns: minmax(0, 1fr); }
+#panel-solver.panel > .card { max-width: 640px; width: 100%; margin-inline: auto; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px; display: grid; gap: 14px; min-width: 0; }
+h2 { margin: 0; font: 800 26px/1.1 var(--display); letter-spacing: -.01em; text-wrap: balance; }
+h3 { margin: 0; font: 700 13px/1.2 var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+p { margin: 0; }
+.lead { color: var(--muted); font-size: 15px; }
+.concept { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.pill { font: 600 11px/1 var(--mono); padding: 5px 7px; border-radius: 4px; border: 1px solid var(--line); background: var(--sunk); color: var(--ink); white-space: nowrap; }
+.pill.u3 { border-color: var(--y); background: var(--tint-y); }
+.pill.u4 { border-color: var(--blue); background: var(--tint); }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.big { font: 800 40px/1 var(--display); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.big small { font: 400 15px/1.2 var(--body); color: var(--muted); letter-spacing: 0; margin-left: 6px; }
+.note { font: 12px/1.55 var(--mono); color: var(--muted); border-top: 1px solid var(--line); padding-top: 12px; }
+.warn { color: var(--red); font-weight: 700; }
+.ok { color: var(--g); font-weight: 700; }
+
+/* Controls */
+.btn { font: 700 14px/1 var(--body); padding: 10px 14px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.btn:disabled { opacity: .45; cursor: default; }
+.btn.sm { padding: 7px 10px; font-size: 13px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+.seg button { font: 700 13px/1 var(--body); padding: 9px 12px; border: 0; background: var(--surface); color: var(--muted); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+input[type=text], input[type=number] { font: 600 16px/1 var(--mono); text-transform: uppercase; letter-spacing: .08em; padding: 9px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--sunk); color: var(--ink); width: 11.5ch; }
+input[type=number] { width: 7ch; text-transform: none; }
+input.wide { width: 100%; }
+textarea { width: 100%; min-height: 70px; font: 14px/1.5 var(--mono); padding: 9px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--sunk); color: var(--ink); resize: vertical; }
+label.lbl { font: 700 12px/1 var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.field { display: grid; gap: 6px; }
+button:focus-visible, input:focus-visible, textarea:focus-visible, .tile:focus-visible, .chip:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+
+/* Tiles */
+.board { display: grid; gap: 6px; }
+.trow { display: flex; gap: 6px; align-items: center; }
+.tile { width: 52px; height: 52px; display: grid; place-items: center; font: 800 26px/1 var(--display); text-transform: uppercase; color: var(--tile-ink); border-radius: 5px; background: var(--x); border: 0; padding: 0; }
+.tile.g { background: var(--g); } .tile.y { background: var(--y); } .tile.x { background: var(--x); }
+.tile.live { cursor: pointer; box-shadow: inset 0 -4px 0 rgba(0,0,0,.18); }
+.tile.live:hover { filter: brightness(1.08); }
+.tile.pop { animation: flip .35s ease-out both; }
+@keyframes flip { from { transform: rotateX(90deg); } to { transform: rotateX(0); } }
+.tile.sm { width: 30px; height: 30px; font-size: 15px; border-radius: 3px; }
+.tile.plain { background: var(--surface); color: var(--ink); border: 2px solid var(--line); }
+.tile.hl { background: var(--blue); color: #fff; border-color: var(--blue); }
+.trow .meta { font: 12px/1.3 var(--mono); color: var(--muted); margin-left: 6px; }
+.legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 2px; vertical-align: -1px; margin-right: 5px; }
+
+/* Chips & lists */
+.chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.chip { font: 600 12px/1 var(--mono); text-transform: uppercase; padding: 6px 7px; border-radius: 4px; background: var(--sunk); border: 1px solid var(--line); color: var(--ink); cursor: pointer; }
+.chip:hover { border-color: var(--muted); }
+.chip.on { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.chip.red { border-color: var(--red); background: var(--tint-red); }
+.list { display: grid; gap: 4px; }
+.list button { display: flex; justify-content: space-between; gap: 10px; font: 600 13px/1.2 var(--mono); padding: 8px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; text-transform: uppercase; text-align: left; }
+.list button span { text-transform: none; color: var(--muted); font-weight: 400; }
+.list button[aria-pressed="true"] { border-color: var(--red); background: var(--tint-red); }
+
+/* Stats */
+.stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.stats.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 520px) { .stats.three { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stats > div { background: var(--surface); padding: 10px 12px; display: grid; gap: 3px; align-content: start; }
+.stats b { font: 800 22px/1.05 var(--display); font-variant-numeric: tabular-nums; }
+.stats span { font-size: 12.5px; color: var(--muted); line-height: 1.35; }
+
+/* Decision tree steps */
+.steps { display: grid; gap: 10px; }
+.step { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; display: grid; gap: 8px; background: var(--sunk); }
+.step-h { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; align-items: baseline; }
+.step-h b { font: 800 16px/1 var(--display); text-transform: uppercase; letter-spacing: .04em; }
+.step-h span { font: 12px/1.3 var(--mono); color: var(--muted); }
+.bars { width: 100%; height: 46px; display: block; }
+
+/* Ladder */
+.ladders { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 560px) { .ladders { grid-template-columns: minmax(0, 1fr); } }
+.ladder { display: grid; gap: 4px; justify-items: start; }
+.rung { font: 11px/1.3 var(--mono); color: var(--muted); padding-left: 4px; }
+
+.scroll { overflow-x: auto; }
+svg text { font-family: var(--mono); }
+.dim { color: var(--muted); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--line); }
+th { font: 700 11px/1.2 var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+td.m { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.bits { font: 13px/1.7 var(--mono); word-break: break-all; background: var(--sunk); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; }
+.bits i { font-style: normal; padding: 1px 2px; border-radius: 2px; }
+.bits i:nth-child(odd) { background: var(--tint); }
+footer { color: var(--muted); font-size: 13px; }
+@media (prefers-reduced-motion: reduce) { .tile.pop { animation: none; } }
+
+/* Decision tree drawer (solver tab) */
+.drawer-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.4); opacity: 0; visibility: hidden; transition: opacity .25s ease, visibility 0s linear .25s; z-index: 40; }
+.drawer-overlay.open { opacity: 1; visibility: visible; transition: opacity .25s ease; }
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(480px, 100vw); background: var(--surface); border-left: 1px solid var(--line); box-shadow: -12px 0 32px rgba(0,0,0,.18); transform: translateX(100%); transition: transform .28s ease; z-index: 41; overflow-y: auto; padding: 18px; display: grid; gap: 14px; align-content: start; }
+.drawer.open { transform: translateX(0); }
+.drawer-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; position: sticky; top: -18px; margin: -18px -18px 0; padding: 18px 18px 10px; background: var(--surface); border-bottom: 1px solid var(--line); }
+@media (prefers-reduced-motion: reduce) { .drawer, .drawer-overlay { transition: none; } }
+</style>
+
+<div class="page">
+  <header class="top">
+    <div style="display:grid;gap:8px">
+      <div class="logo" aria-label="WordGraph">
+        <span style="background:var(--g)">W</span><span style="background:var(--y)">O</span><span style="background:var(--x)">R</span><span style="background:var(--g)">D</span><span class="gap"></span><span class="o">G</span><span class="o">R</span><span class="o">A</span><span class="o">P</span><span class="o">H</span>
+      </div>
+      <p class="tagline">The trees and graphs inside Wordle, word ladders, autocomplete and spell-check, running live on 2,187 common English words.</p>
+    </div>
+  </header>
+  <nav class="tabs" id="tabs" role="tablist" aria-label="Tools"></nav>
+  <main id="panels"></main>
+  <footer>Discrete Structures model · Unit III (trees) and Unit IV (graph theory). Word list: common 5-letter words from the public-domain ENABLE dictionary filtered by Wiktionary frequency lists.</footer>
+</div>
+
+<script>
+/* Generated by tools/build-data.js from tools/words5.txt. Do not edit by hand. */
+self.WG = self.WG || {};
+self.WG.WORDS = ["aargh","aback","abbey","abbot","abide","abode","abort","about","above","abuse","acing","acorn","actin","actor","acute","adage","adapt","adept","admit","adobe","adopt","adore","adult","afoot","after","again","agent","agile","aging","agony","agree","ahead","ahold","aisle","alamo","alarm","album","alert","algae","alias","alibi","alien","alike","alive","allee","alley","allow","aloft","aloha","alone","along","aloud","alpha","altar","alter","amaze","amber","amend","amigo","amino","amiss","among","ample","amply","amuse","angel","anger","angle","angry","angst","anise","ankle","annex","annoy","annul","antsy","anvil","apart","apple","apply","apron","aptly","arbor","arena","argon","argue","ariel","arise","armor","aroma","arose","array","arrow","arson","artsy","ascot","aside","askew","aspen","asset","atlas","attic","audio","audit","auger","aught","avoid","await","awake","award","aware","awful","awoke","bacon","badge","badly","bagel","baggy","baker","banal","banjo","barge","baron","barre","basic","basil","basin","baste","batch","bathe","baton","batty","bawdy","bayou","beach","beard","beast","beech","beefy","beery","began","begat","begin","begun","beige","being","belie","belle","belly","below","bench","bendy","benny","beret","berry","bialy","bible","bigot","bijou","biker","bilge","billy","bimbo","binge","bingo","birch","birth","bison","bitsy","bitty","black","blade","blame","bland","blank","blast","blaze","bleak","bleed","bleep","blend","bless","blimp","blind","blink","bliss","blitz","block","bloke","blond","blood","bloom","blown","bluer","bluff","blume","blunt","blurb","blurt","blush","board","boast","bobby","bongo","bonus","booby","boost","booth","booty","bosom","bossy","bound","bowel","boxer","brace","braid","brain","brake","brand","brash","brass","brava","brave","bravo","brawl","bread","break","brent","briar","bribe","brick","bride","brief","brill","bring","brink","britt","broad","brock","broke","brood","brook","broom","broth","brown","brunt","brush","brute","bucko","buddy","budge","buffy","buggy","bugle","build","built","bulge","bulky","bully","bumpy","bunch","bunny","burke","burly","burnt","burro","burst","butch","buyer","bwana","cabin","cable","cache","caddy","cadet","cagey","camel","canal","candy","canoe","caper","carat","carbo","cargo","carol","carry","carve","caste","catch","cater","catty","cause","cease","cedar","cello","chaff","chain","chair","chalk","champ","chang","chant","charm","chart","chase","chasm","cheap","cheat","check","cheek","cheep","cheer","chemo","chess","chest","chevy","chewy","chick","chico","chief","child","chile","chili","chill","chime","chimp","china","chink","chino","chirp","choir","choke","chomp","chord","chore","chose","chuck","chump","chunk","churn","chute","cider","cigar","cissy","civic","civil","clack","claim","clamp","clang","clash","clasp","class","clean","clear","clerk","click","cliff","climb","cling","clink","cloak","clock","clone","close","cloth","cloud","clout","clown","cluck","clump","clung","clunk","coach","coast","cobra","cocoa","colic","colin","colon","color","combo","comer","comet","comfy","comic","comma","condo","coney","coral","corky","corny","costa","couch","cough","could","count","coupe","court","coven","cover","covet","cower","craft","cramp","crane","crank","crash","crass","crate","crave","crawl","craze","crazy","creak","cream","credo","creed","creek","creep","creme","crepe","crept","crest","crick","cried","crier","cries","crime","crimp","crisp","croak","crock","croft","crook","croon","cross","crowd","crown","crude","cruel","crumb","crush","crust","crypt","cubby","cubic","cuddy","culpa","cumin","cupid","cuppa","curie","curly","curry","curse","curve","cushy","cuter","cutie","cycle","cynic","daddy","daffy","daily","dairy","daisy","dally","dance","dandy","dater","dealt","death","debit","debut","decaf","decay","decor","decoy","deity","delay","delly","delta","delve","demon","demur","dense","depot","depth","derby","deuce","devil","devon","diary","dicey","digit","dilly","dimly","diner","dingo","dingy","dinky","dirty","disco","ditch","ditsy","ditto","ditty","diver","divvy","dizzy","dodge","dodgy","doggy","doily","doing","dolce","dolly","donna","donor","donut","doozy","dopey","dorky","dotty","doubt","dough","dowdy","downy","dozen","dozer","draft","drain","drake","drama","drank","drape","drawn","dread","dream","dreck","dress","dried","drier","dries","drift","drill","drink","drive","droll","drone","drool","droop","drove","drown","drunk","dryer","ducky","dummy","dusky","dusty","dutch","duvet","dwarf","dweeb","dwell","dying","eager","eagle","early","earth","easel","eaten","eater","ebony","edema","edict","eerie","eight","eject","eking","elbow","elder","elect","elite","elope","elude","elves","ember","emery","empty","enact","enema","enemy","enjoy","ennui","ensue","enter","entry","envoy","epoxy","equal","erase","erect","erica","erode","error","erupt","essay","ester","ether","ethic","ethyl","evade","event","every","evict","exact","excel","exile","exist","expel","extra","fable","facet","faint","fairy","faith","false","fancy","fanny","farce","fatal","fatso","fatty","fault","fauna","favor","feast","feces","feign","fella","felon","femme","femur","fence","ferry","fetal","fetch","fever","fewer","fiber","fibre","ficus","field","fiend","fiery","fifth","fifty","fight","filet","filly","filth","final","finch","finer","first","fishy","fitch","fiver","fixer","flack","flail","flair","flake","flaky","flame","flank","flare","flash","flask","fleet","flesh","flick","flier","flies","fling","flint","flirt","float","flock","flood","floor","flora","floss","flour","flown","fluff","fluid","fluke","flung","flunk","flush","flute","flyer","foamy","focal","focus","folly","foray","force","forge","forgo","forte","forth","forty","forum","fosse","found","foyer","frail","frame","franc","frank","fraud","freak","freer","fresh","fried","fries","frisk","fritz","front","frost","frown","froze","fruit","fryer","fudge","fugue","fully","fungi","funky","funny","furry","fussy","futon","fuzzy","gabby","gamer","gamma","gammy","gamut","ganja","garth","gassy","gator","gaudy","gauge","gault","gauze","gavel","gecko","geeky","geese","gemma","genie","genoa","genre","getup","ghost","ghoul","giant","giddy","gimme","ginny","girly","girth","given","giver","gizmo","glade","gland","glare","glass","glaze","gleam","glide","glint","gloat","globe","gloom","glory","gloss","glove","gnome","godly","gofer","going","golly","goner","gonzo","goody","gooey","goofy","goopy","goose","gorge","gouge","gourd","grace","grade","grail","grain","grand","grant","grape","grasp","grass","grate","grave","gravy","great","greek","green","greet","grief","griff","grift","grill","grime","grind","gripe","groin","groom","grope","gross","group","grove","growl","grown","gruel","grunt","guard","guava","guess","guest","guide","guild","guilt","gulag","gulch","gushy","gusto","gypsy","habit","hairy","hallo","handy","hanky","happy","hardy","harem","harpy","harry","harsh","haste","hasty","hatch","hater","haunt","haute","haven","havoc","hazel","heady","heard","heart","heath","heave","heavy","hedge","hefty","heigh","heist","helix","hello","hence","henry","hertz","hiker","hippo","hitch","hobby","hocus","hogan","hoist","hokey","holly","homer","homey","honda","honey","honky","honor","hooch","hooky","hoppy","horde","horse","hotel","hound","house","hovel","hover","howdy","hubby","huffy","hullo","human","humid","humor","humph","hunch","hunky","hurry","hurst","husky","hutch","hydra","hyper","icing","ideal","idiom","idiot","igloo","iliad","image","imply","incur","index","indie","inept","infra","inner","input","inter","intro","irony","issue","itchy","ivory","jabot","japan","jaunt","jelly","jenny","jerky","jerry","jesse","jewel","jiffy","jihad","jimmy","joint","joker","jolly","jones","joust","judas","judge","juice","juicy","julep","jumbo","jumpy","junky","juror","kabob","kappa","kaput","karat","karma","kasha","kayak","kelly","kendo","kerry","ketch","khaki","kicky","kiddo","kiosk","kissy","kitty","klutz","knack","kneel","knelt","knife","knock","knoll","known","koala","kooky","kraft","label","labor","lacey","laden","ladle","lager","laird","laker","lance","lanky","lapel","lapse","larch","large","laser","lasso","latch","later","latex","lathe","latte","laugh","laura","layer","lazar","leafy","leaky","leapt","learn","leary","lease","leash","least","leave","ledge","leech","leery","lefty","legal","leggy","legit","lemon","lemur","leper","levee","level","lever","lewis","liane","libel","liege","lifer","light","lilac","limbo","limey","limit","linen","liner","lingo","lippy","liter","liven","liver","livid","llama","loath","lobby","local","lodge","lofty","logan","logic","lolly","loner","loony","loose","loran","lorry","loser","lotte","lotto","louie","louis","louse","lousy","lover","lower","lowly","loyal","lucid","lucky","lumpy","lunar","lunch","lunge","lupus","lurch","lying","lymph","lynch","mache","macho","madam","madly","madre","mafia","magic","major","maker","mamie","mamma","mangy","manic","manly","manna","manor","maple","march","marge","maria","marry","marsh","mason","massa","match","matey","mavis","maxim","mayan","maybe","mayor","mealy","meant","meaty","mecca","medal","media","medic","melon","mensa","mercy","merit","merle","merry","messy","metal","meter","metro","micro","midge","midst","might","milky","mimic","mince","miner","minor","minty","minus","mirth","missy","misty","mixer","mixup","mocha","model","modem","mohel","moist","moldy","molly","molto","momma","mommy","monde","mondo","money","monte","month","mooch","moody","moola","moose","mopey","moral","moron","morph","morse","mosey","motel","motif","motor","motto","mould","mound","mount","mourn","mouse","mousy","mouth","movie","mower","moxie","mucus","muddy","muggy","mulch","muley","mummy","munch","mural","murky","mushy","music","nacho","naive","naked","nance","nancy","nanny","nappy","nasal","nasty","natty","naval","needy","nelly","nerdy","nerve","never","newly","nexus","nicer","niche","niece","nifty","night","ninja","ninny","ninth","nippy","nitty","noble","noise","noisy","nomad","noose","north","nosey","notch","novel","nudge","nudie","nurse","nutty","nylon","nymph","oasis","obese","occur","ocean","oddly","offer","often","olden","older","oldie","olive","omega","onion","oomph","opera","opium","optic","orbit","order","organ","other","otter","ought","ounce","outdo","outer","owing","owner","ozone","pacer","paddy","padre","pagan","pager","paint","paler","palsy","panda","panel","panic","pansy","panty","paper","pappy","parka","party","pasta","paste","patch","patio","patsy","patty","pause","peace","peach","pearl","pecan","pedal","pedro","penal","pence","penne","penny","perch","peril","perky","perry","pesky","pesto","petal","peter","petit","petty","phase","phone","phony","photo","piano","picky","piece","piggy","pilar","pilot","pinch","pinky","pinot","pinto","pious","piper","pitch","pithy","pivot","pixie","pizza","place","plaid","plain","plait","plane","plank","plant","plate","playa","plaza","plead","pluck","plump","plush","poach","point","poise","poker","pokey","polar","polio","polka","pooch","poofy","poppa","poppy","porch","porky","poser","posse","potty","pouch","pound","power","prank","press","price","pride","prima","prime","primo","print","prior","priss","privy","prize","probe","promo","prone","proof","prose","proud","prove","prowl","proxy","prude","prune","psalm","psych","pubic","puffy","pulse","punch","punky","pupil","puppy","puree","purer","purge","purse","pushy","putty","pygmy","quack","quake","quark","quart","queen","quell","query","quest","queue","quick","quiet","quilt","quirk","quite","quota","quote","quoth","rabbi","rabid","racer","radar","radio","rainy","raise","rajah","rally","ralph","ranch","range","rapid","ratio","ratty","raven","razor","reach","react","ready","realm","rebel","recap","recon","redid","reeve","refer","regal","rehab","reign","relax","relay","relic","renal","renew","repay","reply","reset","resin","retro","rhino","rhyme","rider","ridge","rifle","right","rigid","rigor","riley","rinse","rioja","risen","risky","ritzy","rival","river","roach","roast","robin","robot","rocky","rodeo","roger","rogue","roman","romeo","roomy","roost","rosin","rouge","rough","round","rouse","roust","route","rover","rowan","rowdy","royal","ruder","rugby","ruler","rumba","rummy","rumor","runny","rural","rusty","saber","sabin","sable","sadly","safer","sahib","saint","saith","salad","sally","salon","salsa","salty","sandy","santo","sappy","saran","sarge","sassy","satin","satyr","sauce","sauna","saver","savin","savor","savvy","sayer","scald","scale","scalp","scamp","scant","scare","scarf","scary","scene","scent","schmo","scoff","scone","scoop","scoot","scope","score","scout","scram","scrap","scrub","scuba","scuff","sedan","seedy","segue","seize","senor","sense","serge","serum","serve","setup","seven","sever","sewer","shack","shade","shady","shaft","shake","shaky","shale","shall","shalt","shame","shank","shape","share","shark","sharp","shave","shawl","shawn","shear","sheen","sheep","sheer","sheet","shelf","shell","shift","shill","shine","shiny","shirt","shiva","shoal","shock","shone","shook","shoot","shore","short","shout","shove","shown","showy","shred","shrew","shrub","shrug","shuck","shunt","shush","sicko","sidle","siege","sight","sigma","silky","silly","silva","since","singe","siree","siren","sissy","sixth","sixty","skate","skier","skiff","skill","skimp","skirt","skulk","skull","skunk","slack","slang","slant","slash","slate","slave","sleek","sleep","sleet","slept","slice","slick","slide","slime","slimy","sling","slink","slope","slung","slurp","slush","smack","small","smart","smash","smear","smell","smelt","smile","smirk","smite","smith","smock","smoke","smoky","snack","snake","snarl","sneak","sneer","snide","sniff","snipe","snook","snoop","snore","snort","snout","snowy","snuck","snuff","soapy","sober","softy","soggy","solar","solid","solve","sonar","sonny","sorel","sorry","sound","soupy","souse","south","space","spade","spank","spare","spark","spasm","spate","spawn","speak","spear","speck","speed","spell","spelt","spend","spent","spice","spicy","spied","spiel","spies","spike","spiky","spill","spine","spiny","spite","spitz","splat","split","spoil","spoke","spook","spool","spoon","sport","spray","spree","spunk","spurt","squad","squat","squaw","squid","stack","staff","stage","stain","stair","stake","stale","stalk","stall","stamp","stand","stang","stare","stark","start","stash","state","stave","stead","steak","steal","steam","steed","steel","steep","steer","stein","steno","stern","stick","stiff","still","sting","stink","stint","stock","stoic","stoke","stole","stomp","stone","stony","stood","stool","stoop","store","stork","storm","story","stove","strap","straw","stray","strep","strip","strut","stuck","study","stuff","stump","stung","stunk","stunt","style","suave","suede","sugar","suing","suite","sunny","super","surge","surly","sushi","sutra","swami","swamp","swank","swarm","swear","sweat","swede","sweep","sweet","swell","swept","swift","swill","swine","swing","swipe","swirl","swiss","swoop","sword","swore","sworn","swung","synch","syrup","tabby","table","tacit","tacky","taffy","taint","taken","taker","takin","talky","tally","tammy","tango","tardy","tarot","taste","tasty","tater","taunt","teach","teary","tease","teddy","teeny","teeth","telex","telly","tempo","tempt","tenor","tense","tenth","tepid","terra","terry","testy","texas","thank","theft","their","theme","there","these","theta","thick","thief","thigh","thine","thing","think","third","thong","thorn","those","three","threw","throw","thumb","thump","thyme","tiara","tibia","tidal","tiger","tight","timer","timid","tippy","tipsy","titan","title","tizzy","toast","today","toddy","token","tommy","toner","tonic","tooth","topaz","topic","torah","torch","torso","total","totem","touch","tough","towel","tower","toxic","toxin","trace","track","trade","trail","train","trait","trans","trash","tread","treat","trend","triad","trial","tribe","trick","tried","tries","tripe","trite","troll","troop","trout","trove","truce","truck","truer","truly","trump","trunk","truss","trust","truth","tubby","tulip","tulle","tummy","tumor","tunic","turbo","tushy","tutor","tutti","twain","tweak","tween","tweet","twerp","twice","twine","twirl","twist","tying","ulcer","ultra","uncle","uncut","under","undue","unfit","union","unite","unity","untie","until","unzip","upped","upper","upset","urban","urine","usher","using","usual","utter","vague","valet","valid","valor","value","valve","vapid","vault","vegan","venom","venue","verge","verse","vesta","vicar","video","vigil","vigor","villa","vinyl","viola","viper","viral","virus","visit","visor","vista","vital","vivid","vixen","vocal","vodka","vogue","voice","voila","vomit","voter","vouch","vowel","vroom","vying","wacko","wacky","wager","wagon","wahoo","waist","waive","waken","walla","wally","waltz","washy","waste","watch","water","weary","weave","weber","wedge","weeny","weepy","weigh","weird","welch","welsh","wench","whack","whale","wharf","wheat","wheel","where","which","whiff","while","whine","whiny","whirl","whisk","white","whole","whoop","whose","widen","wider","widow","width","wield","wiggy","willy","wimpy","winch","windy","wiper","wiser","witch","witty","woken","woman","women","wonky","woody","woozy","world","worry","worse","worst","worth","would","wound","woven","wrath","wreak","wreck","wring","wrist","write","wrong","wrote","wrung","wussy","xerox","yacht","yahoo","yeast","yield","yikes","yodel","yokel","young","youse","youth","yummy","zebra","zesty","zippy"];
+self.WG.META = {"first":"raise","firstWorst":180,"firstGroups":130,"tree":{"dist":{"1":1,"2":78,"3":964,"4":1038,"5":104,"6":2},"height":6,"average":3.535893918609968,"internal":2339},"ladder":["sleep","dream"]};
+</script>
+<script>
+/*
+ * WordGraph core: the word graph.
+ * Vertices = 5-letter words. Edge between two words that differ in exactly one position.
+ *
+ * Building it the naive way compares every pair: n(n-1)/2 ≈ 2.4 million comparisons.
+ * Instead each word goes into 5 "wildcard buckets" (cold → _old, c_ld, co_d, col_).
+ * Words that share a bucket differ only at the wildcard, so each bucket is a clique.
+ * Two different words can share at most one bucket, so no edge is created twice.
+ * Cost: O(n · L) bucket inserts plus the edges themselves.
+ */
+(function (WG) {
+  const KEY_ROWS = ['qwertyuiop', 'asdfghjkl', 'zxcvbnm'];
+  const KEY_POS = {};
+  KEY_ROWS.forEach((row, y) => [...row].forEach((c, x) => { KEY_POS[c] = [x + y * 0.5, y]; }));
+
+  /** Straight-line distance between two keys on a QWERTY keyboard (1 = neighbouring keys). */
+  WG.keyDistance = function (a, b) {
+    const p = KEY_POS[a], q = KEY_POS[b];
+    return Math.hypot(p[0] - q[0], p[1] - q[1]);
+  };
+
+  /** Position (0-4) where two neighbouring words differ. */
+  WG.diffPos = function (u, v) {
+    for (let i = 0; i < u.length; i++) if (u[i] !== v[i]) return i;
+    return -1;
+  };
+
+  /** Edge weight used by the weighted ladder: how far your finger moves to swap the letter. */
+  WG.edgeWeight = function (u, v) {
+    const i = WG.diffPos(u, v);
+    return Math.round(WG.keyDistance(u[i], v[i]) * 100) / 100;
+  };
+
+  WG.buildGraph = function (words) {
+    const index = new Map(words.map((w, i) => [w, i]));
+    const buckets = new Map();
+    words.forEach((w, i) => {
+      for (let p = 0; p < w.length; p++) {
+        const key = w.slice(0, p) + '_' + w.slice(p + 1);
+        let b = buckets.get(key);
+        if (!b) buckets.set(key, (b = []));
+        b.push(i);
+      }
+    });
+    const adj = words.map(() => []);
+    let edges = 0;
+    buckets.forEach((b) => {
+      for (let i = 0; i < b.length; i++)
+        for (let j = i + 1; j < b.length; j++) {
+          adj[b[i]].push(b[j]);
+          adj[b[j]].push(b[i]);
+          edges++;
+        }
+    });
+    return { words, index, adj, edges, buckets };
+  };
+
+  /** Connected components with BFS. `removed` (optional) is a vertex treated as deleted. */
+  WG.components = function (adj, removed) {
+    const n = adj.length, comp = new Int32Array(n).fill(-1), sizes = [];
+    for (let s = 0; s < n; s++) {
+      if (comp[s] >= 0 || s === removed) continue;
+      const id = sizes.length;
+      let size = 0;
+      const queue = [s];
+      comp[s] = id;
+      for (let h = 0; h < queue.length; h++) {
+        const u = queue[h];
+        size++;
+        for (const v of adj[u]) if (v !== removed && comp[v] < 0) { comp[v] = id; queue.push(v); }
+      }
+      sizes.push(size);
+    }
+    return { comp, sizes };
+  };
+})(self.WG = self.WG || {});
+</script>
+<script>
+/*
+ * WordGraph core: shortest word ladders.
+ *  - bfs():      fewest steps (every edge counts as 1). O(V + E).
+ *  - dijkstra(): least typing effort, edges weighted by keyboard distance. O((V + E) log V) with a binary heap.
+ * Both return the path as a list of vertex ids, or null when the target is in another component.
+ */
+(function (WG) {
+  class MinHeap {
+    constructor() { this.a = []; }
+    get size() { return this.a.length; }
+    push(item) {
+      const a = this.a; a.push(item);
+      let i = a.length - 1;
+      while (i > 0) {
+        const p = (i - 1) >> 1;
+        if (a[p][0] <= a[i][0]) break;
+        [a[p], a[i]] = [a[i], a[p]]; i = p;
+      }
+    }
+    pop() {
+      const a = this.a, top = a[0], last = a.pop();
+      if (a.length) {
+        a[0] = last;
+        let i = 0;
+        for (;;) {
+          const l = 2 * i + 1, r = l + 1;
+          let m = i;
+          if (l < a.length && a[l][0] < a[m][0]) m = l;
+          if (r < a.length && a[r][0] < a[m][0]) m = r;
+          if (m === i) break;
+          [a[m], a[i]] = [a[i], a[m]]; i = m;
+        }
+      }
+      return top;
+    }
+  }
+  WG.MinHeap = MinHeap;
+
+  function tracePath(prev, s, t) {
+    const path = [t];
+    while (path[path.length - 1] !== s) path.push(prev[path[path.length - 1]]);
+    return path.reverse();
+  }
+
+  WG.bfs = function (G, s, t) {
+    const n = G.adj.length, prev = new Int32Array(n).fill(-1), seen = new Uint8Array(n);
+    const queue = [s]; seen[s] = 1;
+    for (let h = 0; h < queue.length; h++) {
+      const u = queue[h];
+      if (u === t) return { path: tracePath(prev, s, t), visited: h + 1 };
+      for (const v of G.adj[u]) if (!seen[v]) { seen[v] = 1; prev[v] = u; queue.push(v); }
+    }
+    return { path: null, visited: queue.length };
+  };
+
+  /** All BFS distances from s (used to pick random ladder challenges). */
+  WG.bfsDistances = function (G, s) {
+    const dist = new Int32Array(G.adj.length).fill(-1), queue = [s]; dist[s] = 0;
+    for (let h = 0; h < queue.length; h++) {
+      const u = queue[h];
+      for (const v of G.adj[u]) if (dist[v] < 0) { dist[v] = dist[u] + 1; queue.push(v); }
+    }
+    return dist;
+  };
+
+  WG.dijkstra = function (G, s, t) {
+    const n = G.adj.length, dist = new Float64Array(n).fill(Infinity), prev = new Int32Array(n).fill(-1), done = new Uint8Array(n);
+    const heap = new MinHeap();
+    dist[s] = 0; heap.push([0, s]);
+    let settled = 0;
+    while (heap.size) {
+      const [d, u] = heap.pop();
+      if (done[u]) continue;
+      done[u] = 1; settled++;
+      if (u === t) break;
+      for (const v of G.adj[u]) {
+        const nd = d + WG.edgeWeight(G.words[u], G.words[v]);
+        if (nd < dist[v]) { dist[v] = nd; prev[v] = u; heap.push([nd, v]); }
+      }
+    }
+    if (dist[t] === Infinity) return { path: null, settled };
+    return { path: tracePath(prev, s, t), cost: dist[t], settled };
+  };
+})(self.WG = self.WG || {});
+</script>
+<script>
+/*
+ * WordGraph core: critical words.
+ * Tarjan's DFS with discovery times (tin) and low-links (low), written iteratively
+ * so deep searches never overflow the call stack. O(V + E).
+ *
+ *  - Bridge u–v: removing the edge disconnects the graph (a cut set of size 1). Test: low[v] > tin[u].
+ *  - Cut vertex v: removing the word disconnects the graph. Non-root test: some child c has low[c] >= tin[v].
+ *    Root test: the root has 2 or more DFS children.
+ *  - cutOff[v]: how many words end up separated from the largest remaining piece if v is removed.
+ */
+(function (WG) {
+  WG.criticalWords = function (adj) {
+    const n = adj.length;
+    const tin = new Int32Array(n).fill(-1), low = new Int32Array(n), size = new Int32Array(n);
+    const parent = new Int32Array(n).fill(-1), it = new Int32Array(n);
+    const sep = new Map(); // v -> sizes of child subtrees that would separate
+    const bridges = [], cutVertices = [];
+    let t = 0;
+    for (let s = 0; s < n; s++) {
+      if (tin[s] >= 0) continue;
+      const order = [];
+      const stack = [s];
+      tin[s] = low[s] = t++; size[s] = 1; order.push(s);
+      while (stack.length) {
+        const v = stack[stack.length - 1];
+        if (it[v] < adj[v].length) {
+          const w = adj[v][it[v]++];
+          if (tin[w] < 0) {
+            parent[w] = v; tin[w] = low[w] = t++; size[w] = 1; order.push(w); stack.push(w);
+          } else if (w !== parent[v]) {
+            low[v] = Math.min(low[v], tin[w]);
+          }
+        } else {
+          stack.pop();
+          const p = parent[v];
+          if (p >= 0) {
+            low[p] = Math.min(low[p], low[v]);
+            size[p] += size[v];
+            if (low[v] > tin[p]) bridges.push({ u: p, v, side: size[v] });
+            if (low[v] >= tin[p]) { if (!sep.has(p)) sep.set(p, []); sep.get(p).push(size[v]); }
+          }
+        }
+      }
+      const C = size[s];
+      for (const b of bridges) if (b.compSize === undefined && tin[b.u] >= tin[s]) { b.compSize = C; b.side = Math.min(b.side, C - b.side); }
+      for (const v of order) {
+        const parts = sep.get(v);
+        if (!parts) continue;
+        const pieces = v === s ? parts.slice() : parts.concat([C - 1 - parts.reduce((a, b) => a + b, 0)]).filter((x) => x > 0);
+        if (pieces.length >= 2) {
+          const total = pieces.reduce((a, b) => a + b, 0);
+          cutVertices.push({ v, pieces: pieces.length, cutOff: total - Math.max(...pieces) });
+        }
+      }
+    }
+    cutVertices.sort((a, b) => b.cutOff - a.cutOff || a.v - b.v);
+    return { bridges, cutVertices };
+  };
+})(self.WG = self.WG || {});
+</script>
+<script>
+/*
+ * WordGraph core: prefix tree (trie) for autocomplete.
+ * Each node is one letter; the path from the root spells a prefix.
+ * Words that start the same share the same path, so shared prefixes are stored once.
+ * Lookup of a prefix of length k: O(k). Listing the m matching words: O(m · L).
+ */
+(function (WG) {
+  class TrieNode {
+    constructor(letter) { this.letter = letter; this.children = new Map(); this.count = 0; this.word = null; }
+  }
+
+  class Trie {
+    constructor() { this.root = new TrieNode(''); this.nodes = 1; }
+    insert(word) {
+      let node = this.root;
+      node.count++;
+      for (const ch of word) {
+        if (!node.children.has(ch)) { node.children.set(ch, new TrieNode(ch)); this.nodes++; }
+        node = node.children.get(ch);
+        node.count++;
+      }
+      node.word = word;
+    }
+    /** Returns the chain of nodes for the prefix (root first), or null if no word starts with it. */
+    walk(prefix) {
+      const chain = [this.root];
+      let node = this.root;
+      for (const ch of prefix) {
+        node = node.children.get(ch);
+        if (!node) return null;
+        chain.push(node);
+      }
+      return chain;
+    }
+    collect(node, limit) {
+      const out = [];
+      (function dfs(n) {
+        if (out.length >= limit) return;
+        if (n.word) out.push(n.word);
+        [...n.children.keys()].sort().forEach((k) => dfs(n.children.get(k)));
+      })(node);
+      return out;
+    }
+  }
+
+  WG.Trie = Trie;
+  WG.buildTrie = function (words) {
+    const t = new Trie();
+    words.forEach((w) => t.insert(w));
+    return t;
+  };
+})(self.WG = self.WG || {});
+</script>
+<script>
+/*
+ * WordGraph core: Huffman coding of letters.
+ * Repeatedly merge the two lowest-frequency nodes until one tree remains.
+ * Left edge = 0, right edge = 1. Every letter is a leaf, so no code is a prefix of another.
+ * O(n log n) for n symbols with a heap (26 letters here, so a sorted array is enough).
+ */
+(function (WG) {
+  WG.huffman = function (freq) {
+    let order = 0;
+    let queue = Object.entries(freq)
+      .filter(([, f]) => f > 0)
+      .map(([sym, f]) => ({ sym, w: f, o: order++ }));
+    if (!queue.length) return null;
+    const merges = [];
+    while (queue.length > 1) {
+      queue.sort((a, b) => a.w - b.w || a.o - b.o);
+      const a = queue.shift(), b = queue.shift();
+      const node = { w: a.w + b.w, left: a, right: b, o: order++ };
+      merges.push(node);
+      queue.push(node);
+    }
+    const root = queue[0];
+    const codes = {};
+    (function walk(n, code) {
+      if (n.sym !== undefined) { codes[n.sym] = code || '0'; return; }
+      walk(n.left, code + '0');
+      walk(n.right, code + '1');
+    })(root, '');
+    return { root, codes, merges };
+  };
+
+  WG.letterFrequencies = function (words) {
+    const f = {};
+    for (let c = 97; c <= 122; c++) f[String.fromCharCode(c)] = 0;
+    words.forEach((w) => { for (const ch of w) f[ch]++; });
+    return f;
+  };
+})(self.WG = self.WG || {});
+</script>
+<script>
+/*
+ * WordGraph core: the Wordle solver as a decision tree.
+ *
+ * Every guess is a tree node. Its feedback (green / yellow / grey for each tile) is one of
+ * 3^5 = 243 patterns, so each node has up to 243 branches; the answers are the leaves.
+ * The solver picks the guess whose largest branch is as small as possible (minimax),
+ * which keeps the tree short. Ties: prefer a guess that could itself be the answer,
+ * then the guess that makes more branches.
+ */
+(function (WG) {
+  const A = 97;
+  WG.GREEN = 2; WG.YELLOW = 1; WG.GREY = 0;
+  WG.ALL_GREEN = 242;
+
+  /** Feedback pattern for `guess` against `answer`, encoded as a base-3 number 0..242. Handles repeated letters like Wordle does. */
+  WG.pattern = function (guess, answer) {
+    const res = [0, 0, 0, 0, 0];
+    const left = new Int8Array(26);
+    for (let i = 0; i < 5; i++) {
+      if (guess.charCodeAt(i) === answer.charCodeAt(i)) res[i] = 2;
+      else left[answer.charCodeAt(i) - A]++;
+    }
+    for (let i = 0; i < 5; i++) {
+      if (res[i]) continue;
+      const c = guess.charCodeAt(i) - A;
+      if (left[c] > 0) { res[i] = 1; left[c]--; }
+    }
+    return res[0] * 81 + res[1] * 27 + res[2] * 9 + res[3] * 3 + res[4];
+  };
+  WG.encodePattern = (tiles) => tiles.reduce((s, x) => s * 3 + x, 0);
+  WG.decodePattern = function (p) {
+    const r = [];
+    for (let i = 4; i >= 0; i--) { r[i] = p % 3; p = Math.floor(p / 3); }
+    return r;
+  };
+
+  /** Split the candidate answers into branches by the feedback `guess` would produce. */
+  WG.partition = function (guess, cands) {
+    const m = new Map();
+    for (const a of cands) {
+      const p = WG.pattern(guess, a);
+      let b = m.get(p);
+      if (!b) m.set(p, (b = []));
+      b.push(a);
+    }
+    return m;
+  };
+
+  WG.bestGuess = function (cands, pool) {
+    if (cands.length <= 2) return { guess: cands[0], worst: 1, groups: cands.length };
+    const inCands = new Set(cands);
+    const cnt = new Int32Array(243);
+    let best = null;
+    for (const g of pool) {
+      cnt.fill(0);
+      let worst = 0, groups = 0;
+      for (const a of cands) {
+        const p = WG.pattern(g, a);
+        if (cnt[p]++ === 0) groups++;
+        if (cnt[p] > worst) worst = cnt[p];
+        if (best && worst > best.worst) break; // can't beat the current best
+      }
+      if (best && worst > best.worst) continue;
+      const isC = inCands.has(g);
+      if (!best || worst < best.worst ||
+          (worst === best.worst && ((isC && !best.isC) || (isC === best.isC && groups > best.groups)))) {
+        best = { guess: g, worst, groups, isC };
+      }
+      if (best.worst === 1 && best.isC) break;
+    }
+    return best;
+  };
+
+  /** Plays the solver against every possible answer and returns the tree's shape (used for the stats panel). */
+  WG.solveAll = function (words, first) {
+    const dist = {};
+    let total = 0, height = 0, internal = 0;
+    (function node(cands, depth, guess) {
+      internal++;
+      const g = guess || WG.bestGuess(cands, words).guess;
+      WG.partition(g, cands).forEach((group, p) => {
+        if (p === WG.ALL_GREEN) {
+          dist[depth + 1] = (dist[depth + 1] || 0) + 1;
+          total += depth + 1;
+          height = Math.max(height, depth + 1);
+        } else node(group, depth + 1, null);
+      });
+    })(words, 0, first);
+    return { dist, height, average: total / words.length, internal };
+  };
+})(self.WG = self.WG || {});
+</script>
+<script>
+/* WordGraph UI: shared helpers, tab registry and start-up. */
+(function (WG) {
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const fmt = (n) => Number(n).toLocaleString('en-IN');
+  const TILE = ['x', 'y', 'g'];
+
+  WG.ui = {
+    esc, fmt,
+    /** One letter tile. state: 0 grey, 1 yellow, 2 green, 'plain', 'hl'. */
+    tile(letter, state, cls) {
+      const c = typeof state === 'number' ? TILE[state] : state;
+      return `<span class="tile ${c} ${cls || ''}">${esc(letter)}</span>`;
+    },
+    word(w, cls, hlIndex) {
+      return `<div class="trow">${[...w].map((ch, i) => WG.ui.tile(ch, i === hlIndex ? 'hl' : 'plain', cls)).join('')}</div>`;
+    },
+    pills(list) {
+      return `<div class="concept">${list.map(([t, u]) => `<span class="pill u${u === 'III' ? 3 : 4}">${esc(t)} · Unit ${u}</span>`).join('')}</div>`;
+    },
+    /** Bar strip of branch sizes (largest first); the chosen branch is highlighted. */
+    bars(sizes, chosen) {
+      const shown = sizes.slice(0, 80), n = shown.length, W = 700, H = 46;
+      const max = Math.max(...shown, 2), bw = W / Math.max(n, 20);
+      let hit = false, s = '';
+      shown.forEach((v, i) => {
+        const h = 4 + (H - 6) * Math.log(v + 1) / Math.log(max + 1);
+        const on = !hit && v === chosen; if (on) hit = true;
+        s += `<rect x="${(i * bw).toFixed(1)}" y="${(H - h).toFixed(1)}" width="${Math.max(bw - 1.5, 1).toFixed(1)}" height="${h.toFixed(1)}" rx="1" style="fill:${on ? 'var(--blue)' : 'var(--x)'};opacity:${on ? 1 : .55}"/>`;
+      });
+      return `<svg class="bars" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Branch sizes"><title>${n} branches, largest ${sizes[0]}</title>${s}</svg>`;
+    },
+    clean(v) { return String(v || '').toLowerCase().replace(/[^a-z]/g, '').slice(0, 5); },
+  };
+
+  WG.tabs = [];
+
+  WG.start = function () {
+    WG.G = WG.buildGraph(WG.WORDS);
+    WG.T = WG.buildTrie(WG.WORDS);
+    WG.FREQ = WG.letterFrequencies(WG.WORDS);
+    WG.H = WG.huffman(WG.FREQ);
+
+    const dl = document.createElement('datalist');
+    dl.id = 'wordlist';
+    dl.innerHTML = WG.WORDS.map((w) => `<option value="${w.toUpperCase()}">`).join('');
+    document.body.appendChild(dl);
+
+    const nav = document.getElementById('tabs'), host = document.getElementById('panels');
+    const mounted = {};
+    function show(id) {
+      WG.tabs.forEach((t) => {
+        const on = t.id === id;
+        nav.querySelector(`[data-tab="${t.id}"]`).setAttribute('aria-selected', on);
+        if (on && !mounted[t.id]) {
+          const el = document.createElement('section');
+          el.className = 'panel'; el.id = 'panel-' + t.id; el.setAttribute('role', 'tabpanel');
+          host.appendChild(el); t.mount(el); mounted[t.id] = el;
+        }
+        if (mounted[t.id]) mounted[t.id].hidden = !on;
+      });
+    }
+    nav.innerHTML = WG.tabs.map((t) => `<button class="tab" type="button" role="tab" data-tab="${t.id}" aria-selected="false">${esc(t.name)}<small>U-${t.unit}</small></button>`).join('');
+    nav.addEventListener('click', (e) => { const b = e.target.closest('[data-tab]'); if (b) show(b.dataset.tab); });
+    const hash = (location.hash || '').slice(1);
+    show(WG.tabs.some((t) => t.id === hash) ? hash : WG.tabs[0].id);
+  };
+})(self.WG = self.WG || {});
+</script>
+<script>
+/* Tab: Wordle solver (decision tree, Unit III). */
+(function (WG) {
+  const U = WG.ui;
+  WG.tabs.push({ id: 'solver', name: 'Wordle solver', unit: 'III', mount });
+
+  function mount(root) {
+    const S = { mode: 'think', rows: [], cands: [], cur: null, solved: false, msg: '', secret: '', animate: false, drawerOpen: false };
+    function reset() {
+      S.rows = []; S.cands = WG.WORDS.slice(); S.solved = false; S.msg = ''; S.fix = null;
+      S.cur = { guess: WG.META.first, tiles: [0, 0, 0, 0, 0], worst: WG.META.firstWorst, groups: WG.META.firstGroups };
+    }
+
+    /** Apply feedback for the current guess. Returns false when no word fits the colours. */
+    function submit(tiles) {
+      const g = S.cur.guess, p = WG.encodePattern(tiles);
+      const part = WG.partition(g, S.cands), group = part.get(p) || [];
+      if (!group.length) {
+        S.msg = `No word in the list gives those colours for ${g.toUpperCase()}.`;
+        S.fix = findFix(tiles);
+        return false;
+      }
+      S.fix = null;
+      const sizes = [...part.values()].map((a) => a.length).sort((a, b) => b - a);
+      S.rows.push({ guess: g, tiles: tiles.slice(), before: S.cands.length, sizes, chosen: group.length, groups: part.size, prevCands: S.cands, prevCur: S.cur });
+      S.msg = '';
+      if (p === WG.ALL_GREEN) { S.solved = true; S.cands = [g]; S.cur = null; return true; }
+      S.cands = group;
+      const nb = WG.bestGuess(group, WG.WORDS);
+      const next = [0, 0, 0, 0, 0];
+      for (let i = 0; i < 5; i++) if (tiles[i] === 2 && nb.guess[i] === g[i]) next[i] = 2; // keep known greens
+      S.cur = { guess: nb.guess, tiles: next, worst: nb.worst, groups: nb.groups };
+      return true;
+    }
+    function undo() {
+      const r = S.rows.pop(); if (!r) return;
+      S.cands = r.prevCands; S.cur = { ...r.prevCur, tiles: r.tiles.slice() }; S.solved = false; S.msg = '';
+    }
+
+    /**
+     * A tapping mistake can be in any earlier row, not just the current one.
+     * Check every word: how many tiles, across all rows, would have to change for it to fit?
+     * The words needing the fewest changes are the likely secret words.
+     */
+    function findFix(curTiles) {
+      const rows = S.rows.map((r) => ({ guess: r.guess, tiles: r.tiles })).concat([{ guess: S.cur.guess, tiles: curTiles }]);
+      let bestDiff = Infinity, words = [];
+      for (const w of WG.WORDS) {
+        let diff = 0;
+        for (const r of rows) {
+          const t = WG.decodePattern(WG.pattern(r.guess, w));
+          for (let i = 0; i < 5; i++) if (t[i] !== r.tiles[i]) diff++;
+          if (diff > bestDiff) break;
+        }
+        if (diff < bestDiff) { bestDiff = diff; words = [w]; } else if (diff === bestDiff) words.push(w);
+      }
+      if (bestDiff > 3) return null;
+      const w = words[0];
+      const changes = [];
+      rows.forEach((r, k) => {
+        const t = WG.decodePattern(WG.pattern(r.guess, w));
+        t.forEach((x, i) => { if (x !== r.tiles[i]) changes.push({ row: k, letter: r.guess[i], to: x }); });
+      });
+      return { words, word: w, changes, rows: rows.map((r) => ({ guess: r.guess, tiles: WG.decodePattern(WG.pattern(r.guess, w)) })) };
+    }
+
+    /** Replays the game with corrected colours, keeping the same guessed words. */
+    function applyFix(fix) {
+      reset();
+      const last = fix.rows.length - 1;
+      fix.rows.forEach((r, k) => {
+        S.cur = { ...S.cur, guess: r.guess, tiles: r.tiles.slice() };
+        if (k < last) submit(r.tiles);
+      });
+      S.fix = null; S.msg = '';
+    }
+    function watch(secret) {
+      reset(); S.secret = secret;
+      while (!S.solved && S.rows.length < 10) submit(WG.decodePattern(WG.pattern(S.cur.guess, secret)));
+      S.animate = true;
+    }
+
+    function left() {
+      const rows = S.rows.map((r, k) => `<div class="trow">${[...r.guess].map((ch, i) => U.tile(ch, r.tiles[i], S.animate ? 'pop' : '').replace('class="tile', `style="animation-delay:${S.animate ? (k * 5 + i) * 90 : 0}ms" class="tile`)).join('')}<span class="meta">${U.fmt(r.before)} → ${U.fmt(r.chosen)}</span></div>`).join('');
+      const live = S.mode === 'think' && S.cur ? `<div class="trow" aria-label="Current guess: tap tiles to set colours">${[...S.cur.guess].map((ch, i) => `<button type="button" class="tile live ${['x', 'y', 'g'][S.cur.tiles[i]]}" data-tile="${i}" aria-label="${ch.toUpperCase()}: ${['grey', 'yellow', 'green'][S.cur.tiles[i]]}">${U.esc(ch)}</button>`).join('')}<span class="meta">tap to colour</span></div>` : '';
+      const status = S.solved
+        ? `<p class="ok">Solved in ${S.rows.length} guess${S.rows.length === 1 ? '' : 'es'}: ${S.rows[S.rows.length - 1].guess.toUpperCase()}</p>`
+        : S.msg ? `<div style="display:grid;gap:8px"><p class="warn">${U.esc(S.msg)}</p>${S.fix && S.cur ? (() => {
+            const names = ['grey', 'yellow', 'green'];
+            const byRow = {};
+            S.fix.changes.forEach((c) => { (byRow[c.row] = byRow[c.row] || []).push(`${c.letter.toUpperCase()} should be ${names[c.to]}`); });
+            const lines = Object.keys(byRow).map((k) => `<li>Row ${+k + 1} (${S.fix.rows[k].guess.toUpperCase()}): <b>${byRow[k].join(', ')}</b></li>`).join('');
+            const ws = S.fix.words.slice(0, 6).map((w) => w.toUpperCase()).join(', ');
+            return `<p>Probably a tapping mistake. The closest fit is <b>${ws}</b>${S.fix.words.length > 6 ? '…' : ''} if you change:</p><ul style="margin:0;padding-left:20px">${lines}</ul><div class="row"><button class="btn sm primary" type="button" data-act="fix">Use this fix</button></div><p class="dim" style="font-size:13px">Tip: green means the letter is in that exact spot. Yellow means it is in the word but somewhere else.</p>`;
+          })() : '<p class="dim">Check each tile against your word and try again.</p>'}</div>`
+        : S.mode === 'think' ? `<div class="big">${U.fmt(S.cands.length)}<small>word${S.cands.length === 1 ? '' : 's'} still possible</small></div>` : '';
+      const controls = S.mode === 'think'
+        ? `<div class="row"><button class="btn primary" type="button" data-act="next" ${S.solved ? 'disabled' : ''}>Next guess</button><button class="btn" type="button" data-act="undo" ${S.rows.length ? '' : 'disabled'}>Undo</button><button class="btn" type="button" data-act="new">New game</button></div>`
+        : `<div class="row"><div class="field"><label class="lbl" for="sv-secret">Secret word</label><input id="sv-secret" type="text" maxlength="5" list="wordlist" value="${U.esc(S.secret.toUpperCase())}" autocomplete="off"></div>
+           <button class="btn primary" type="button" data-act="solve" style="align-self:end">Solve it</button><button class="btn" type="button" data-act="random" style="align-self:end">Random word</button></div>`;
+      return `<div class="card">
+        <div class="row" style="justify-content:space-between;align-items:flex-start;flex-wrap:wrap">
+          <div style="display:grid;gap:10px"><h2>Wordle solver</h2>${U.pills([['Decision tree', 'III']])}</div>
+          <button class="btn sm" type="button" data-act="tree-open">View decision tree</button>
+        </div>
+        <p class="lead">${S.mode === 'think'
+          ? 'Think of any 5-letter word and keep it secret. For each guess, tap the tiles to match the colours Wordle would give, then press Next guess.'
+          : 'Type a secret word and watch the solver find it. Each guess is a question; each colour pattern is a branch.'}</p>
+        <div class="seg" role="group" aria-label="Mode"><button type="button" data-mode="think" aria-pressed="${S.mode === 'think'}">You pick a word</button><button type="button" data-mode="watch" aria-pressed="${S.mode === 'watch'}">Watch it solve</button></div>
+        ${controls}
+        <div class="board">${rows}${live}</div>
+        ${status}
+        <div class="legend"><span><i style="background:var(--g)"></i>right letter, right spot</span><span><i style="background:var(--y)"></i>in the word, wrong spot</span><span><i style="background:var(--x)"></i>not in the word</span></div>
+      </div>`;
+    }
+
+    function right() {
+      const path = [WG.WORDS.length, ...S.rows.map((r) => r.chosen)].map(U.fmt).join(' → ');
+      const steps = S.rows.map((r, k) => `<div class="step">
+        <div class="step-h"><b>Guess ${k + 1} · ${r.guess}</b><span>${U.fmt(r.before)} words → ${r.groups} branches · largest ${U.fmt(r.sizes[0])}</span></div>
+        ${U.bars(r.sizes, r.chosen)}
+        <p class="dim" style="font-size:13px">The colours led down a branch of <b style="color:var(--blue)">${U.fmt(r.chosen)}</b> word${r.chosen === 1 ? '' : 's'}.</p></div>`).join('');
+      const nextInfo = S.cur && !S.solved && S.mode === 'think'
+        ? `<div class="step" style="background:var(--surface)"><div class="step-h"><b>Next question · ${S.cur.guess}</b><span>worst branch ≤ ${U.fmt(S.cur.worst)} word${S.cur.worst === 1 ? '' : 's'}</span></div>
+           <p class="dim" style="font-size:13px">Chosen from all ${U.fmt(WG.WORDS.length)} words because its largest branch is the smallest possible (minimax).</p></div>` : '';
+      const cands = !S.solved && S.cands.length > 1 && S.cands.length <= 60
+        ? `<div><h3 style="margin-bottom:8px">Still possible</h3><div class="chips">${S.cands.map((w) => `<span class="chip">${w}</span>`).join('')}</div></div>` : '';
+      const T = WG.META.tree, maxD = Math.max(...Object.values(T.dist));
+      const hist = Object.keys(T.dist).sort((a, b) => a - b).map((d) => {
+        const v = T.dist[d], w = Math.max(2, (v / maxD) * 100);
+        return `<div style="display:grid;grid-template-columns:9ch 1fr 6ch;gap:8px;align-items:center;font:12px var(--mono)"><span>${d} guess${d === '1' ? '' : 'es'}</span><span style="height:12px;width:${w}%;background:var(--g);border-radius:2px"></span><span>${U.fmt(v)}</span></div>`;
+      }).join('');
+      return `<p class="lead">Every guess is a node. Its feedback is one of 3⁵ = 243 colour patterns, so each node can branch up to 243 ways. The answers are the leaves.</p>
+        <div><h3 style="margin-bottom:6px">Your path down the tree</h3><p style="font:600 15px var(--mono)">${path}</p></div>
+        ${steps ? `<div class="steps">${steps}</div>` : `<p class="dim">Give feedback on the first guess, ${WG.META.first.toUpperCase()}, to start down the tree. Bars will show how that guess splits all ${U.fmt(WG.WORDS.length)} words.</p>`}
+        ${nextInfo}${cands}
+        <div style="display:grid;gap:8px">
+          <h3>Whole tree, tested on every word</h3>
+          <div class="stats three"><div><b>${T.height}</b><span>Tree height: most guesses ever needed</span></div><div><b>${T.average.toFixed(2)}</b><span>Average guesses</span></div><div><b>${U.fmt(T.internal)}</b><span>Question nodes in the tree</span></div></div>
+          ${hist}
+        </div>
+        <p class="note">Choosing a guess checks every word against every remaining answer: O(W · C) pattern checks for W guesses and C candidates. The first guess (${WG.META.first.toUpperCase()}) is precomputed; later guesses are computed live.</p>`;
+    }
+
+    function drawer() {
+      return `<div class="drawer-overlay ${S.drawerOpen ? 'open' : ''}" data-act="tree-close"></div>
+      <aside class="drawer ${S.drawerOpen ? 'open' : ''}" aria-label="Decision tree" aria-hidden="${S.drawerOpen ? 'false' : 'true'}">
+        <div class="drawer-head"><h2>The decision tree</h2><button class="btn sm" type="button" data-act="tree-close" aria-label="Close decision tree">Close</button></div>
+        ${right()}
+      </aside>`;
+    }
+
+    function render() { root.innerHTML = left() + drawer(); S.animate = false; }
+
+    root.addEventListener('click', (e) => {
+      const t = e.target.closest('[data-tile]');
+      if (t && S.cur) { const i = +t.dataset.tile; S.cur.tiles[i] = (S.cur.tiles[i] + 1) % 3; S.msg = ''; S.fix = null; render(); root.querySelector(`[data-tile="${i}"]`)?.focus(); return; }
+      const m = e.target.closest('[data-mode]');
+      if (m) { S.mode = m.dataset.mode; reset(); if (S.mode === 'watch') watch(S.secret || 'brick'); render(); return; }
+      const a = e.target.closest('[data-act]'); if (!a) return;
+      const act = a.dataset.act;
+      if (act === 'tree-open') S.drawerOpen = true;
+      else if (act === 'tree-close') S.drawerOpen = false;
+      else if (act === 'next' && S.cur) submit(S.cur.tiles);
+      else if (act === 'fix' && S.fix) applyFix(S.fix);
+      else if (act === 'undo') undo();
+      else if (act === 'new') reset();
+      else if (act === 'solve') {
+        const v = U.clean(root.querySelector('#sv-secret').value);
+        if (!WG.G.index.has(v)) { reset(); S.secret = v; S.msg = `${v.toUpperCase() || 'That'} is not in the ${U.fmt(WG.WORDS.length)}-word list. Try another word.`; }
+        else watch(v);
+      } else if (act === 'random') watch(WG.WORDS[Math.floor(Math.random() * WG.WORDS.length)]);
+      render();
+    });
+    root.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && e.target.id === 'sv-secret') root.querySelector('[data-act="solve"]').click();
+      if (e.key === 'Escape' && S.drawerOpen) { S.drawerOpen = false; render(); }
+    });
+
+    reset(); render();
+  }
+})(self.WG = self.WG || {});
+</script>
+<script>
+/* Tab: Word ladder (Dijkstra and BFS, Unit IV). */
+(function (WG) {
+  const U = WG.ui;
+  WG.tabs.push({ id: 'ladder', name: 'Word ladder', unit: 'IV', mount });
+
+  function mount(root) {
+    const G = WG.G;
+    const S = { a: WG.META.ladder[0], b: WG.META.ladder[1], guess: '', res: null, msg: '' };
+
+    function run() {
+      S.msg = ''; S.res = null;
+      if (!G.index.has(S.a) || !G.index.has(S.b)) { S.msg = `${(!G.index.has(S.a) ? S.a : S.b).toUpperCase() || 'That'} is not in the word list.`; return; }
+      if (S.a === S.b) { S.msg = 'Pick two different words.'; return; }
+      const s = G.index.get(S.a), t = G.index.get(S.b);
+      const bfs = WG.bfs(G, s, t), dij = WG.dijkstra(G, s, t);
+      let comps = null;
+      if (!bfs.path) { const c = WG.components(G.adj); comps = { a: c.sizes[c.comp[s]], b: c.sizes[c.comp[t]] }; }
+      S.res = { bfs, dij, comps };
+    }
+    function randomPair() {
+      const c = WG.components(G.adj), big = c.sizes.indexOf(Math.max(...c.sizes));
+      for (let tries = 0; tries < 50; tries++) {
+        const s = Math.floor(Math.random() * WG.WORDS.length);
+        if (c.comp[s] !== big || G.adj[s].length < 2) continue;
+        const d = WG.bfsDistances(G, s), far = [];
+        d.forEach((x, i) => { if (x >= 5 && x <= 7) far.push(i); });
+        if (far.length) { S.a = WG.WORDS[s]; S.b = WG.WORDS[far[Math.floor(Math.random() * far.length)]]; return; }
+      }
+    }
+    const cost = (path) => path.slice(1).reduce((sum, v, i) => sum + WG.edgeWeight(G.words[path[i]], G.words[v]), 0);
+
+    function ladderHTML(path) {
+      return `<div class="ladder">${path.map((v, i) => {
+        const w = G.words[v];
+        if (i === 0) return U.word(w, 'sm');
+        const prev = G.words[path[i - 1]], p = WG.diffPos(prev, w);
+        return `<div class="rung">${prev[p].toUpperCase()} → ${w[p].toUpperCase()} · key distance ${WG.edgeWeight(prev, w).toFixed(2)}</div>${U.word(w, 'sm', p)}`;
+      }).join('')}</div>`;
+    }
+
+    function render() {
+      const r = S.res;
+      let out = '';
+      if (S.msg) out = `<p class="warn">${U.esc(S.msg)}</p>`;
+      else if (r && !r.bfs.path) out = `<p class="warn">No ladder exists.</p><p>${S.a.toUpperCase()} is in a connected component of ${U.fmt(r.comps.a)} word${r.comps.a === 1 ? '' : 's'}, and ${S.b.toUpperCase()} is in a different component of ${U.fmt(r.comps.b)}. No path can cross between components.</p>`;
+      else if (r) {
+        const steps = r.bfs.path.length - 1, dSteps = r.dij.path.length - 1, same = r.bfs.path.join() === r.dij.path.join();
+        const g = parseInt(S.guess, 10);
+        const verdict = Number.isFinite(g) ? `<p>${g === steps ? '<span class="ok">Exactly right.</span>' : g > steps ? `<span class="ok">It's shorter than you thought:</span> ${steps} steps, not ${g}.` : `<span class="warn">Impossible:</span> the shortest ladder needs ${steps} steps.`}</p>` : '';
+        out = `${verdict}
+        <div class="stats three"><div><b>${steps}</b><span>Fewest steps (BFS)</span></div><div><b>${r.dij.cost.toFixed(2)}</b><span>Least typing effort (Dijkstra)</span></div><div><b>${U.fmt(r.dij.settled)}</b><span>Words settled by Dijkstra</span></div></div>
+        <div class="ladders">
+          <div><h3 style="margin-bottom:8px">Fewest steps · ${steps}</h3>${ladderHTML(r.bfs.path)}<p class="dim" style="font-size:13px;margin-top:6px">Effort ${cost(r.bfs.path).toFixed(2)}</p></div>
+          <div><h3 style="margin-bottom:8px">Least effort · ${dSteps} steps</h3>${ladderHTML(r.dij.path)}<p class="dim" style="font-size:13px;margin-top:6px">Effort ${r.dij.cost.toFixed(2)}</p></div>
+        </div>
+        <p>${same ? 'Here the shortest ladder is also the easiest to type.' : `The easiest ladder to type is <b>not</b> the shortest: it takes ${dSteps - steps} extra step${dSteps - steps === 1 ? '' : 's'} but saves ${(cost(r.bfs.path) - r.dij.cost).toFixed(2)} key-widths of finger travel. That is why a weighted graph needs Dijkstra, not BFS.`}</p>`;
+      }
+      root.innerHTML = `<div class="card">
+        <h2>Word ladder</h2>
+        ${U.pills([['Dijkstra', 'IV'], ['Shortest path', 'IV']])}
+        <p class="lead">Change one letter at a time; every step must be a real word. Each word is a vertex, and one-letter changes are edges.</p>
+        <div class="row">
+          <div class="field"><label class="lbl" for="ld-a">From</label><input id="ld-a" type="text" maxlength="5" list="wordlist" value="${S.a.toUpperCase()}" autocomplete="off"></div>
+          <div class="field"><label class="lbl" for="ld-b">To</label><input id="ld-b" type="text" maxlength="5" list="wordlist" value="${S.b.toUpperCase()}" autocomplete="off"></div>
+          <div class="field"><label class="lbl" for="ld-g">Your guess</label><input id="ld-g" type="number" min="1" max="30" placeholder="steps" value="${U.esc(S.guess)}"></div>
+        </div>
+        <div class="row"><button class="btn primary" type="button" data-act="go">Find ladders</button><button class="btn" type="button" data-act="swap">Swap</button><button class="btn" type="button" data-act="rand">Random challenge</button></div>
+        <p class="dim" style="font-size:14px"><b>Edge weights:</b> the distance between the old and new letter on a QWERTY keyboard. Swapping to a neighbouring key costs 1.00; E → M costs ${WG.keyDistance('e', 'm').toFixed(2)}.</p>
+        <p class="note">BFS: O(V + E), counts every edge as 1. Dijkstra with a binary heap: O((V + E) log V), handles different edge weights. Dijkstra is correct here because key distances are never negative.</p>
+      </div>
+      <div class="card"><h2>${S.a.toUpperCase()} → ${S.b.toUpperCase()}</h2>${out || '<p class="dim">Press Find ladders.</p>'}</div>`;
+    }
+
+    root.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-act]'); if (!b) return;
+      S.a = U.clean(root.querySelector('#ld-a').value); S.b = U.clean(root.querySelector('#ld-b').value); S.guess = root.querySelector('#ld-g').value;
+      if (b.dataset.act === 'swap') [S.a, S.b] = [S.b, S.a];
+      if (b.dataset.act === 'rand') { randomPair(); S.guess = ''; }
+      run(); render();
+    });
+    root.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.matches('input')) root.querySelector('[data-act="go"]').click(); });
+    run(); render();
+  }
+})(self.WG = self.WG || {});
+</script>
+<script>
+/* Tab: Autocomplete (prefix tree / trie, Unit III). */
+(function (WG) {
+  const U = WG.ui;
+  WG.tabs.push({ id: 'trie', name: 'Autocomplete', unit: 'III', mount });
+
+  function mount(root) {
+    const T = WG.T;
+    const S = { prefix: 'gr' };
+    const letters = WG.WORDS.length * 5;
+
+    function treeSVG(chain) {
+      const k = chain.length - 1, last = chain[k];
+      const kids = [...last.children.values()].sort((a, b) => b.count - a.count);
+      const dx = 96, x0 = 36, rowH = 26;
+      const H = Math.max(kids.length * rowH + 30, 150), cy = H / 2;
+      const kidX = x0 + (k + 1) * dx + 30, W = kids.length ? kidX + 90 : x0 + k * dx + 90;
+      const maxC = Math.max(1, ...kids.map((c) => c.count));
+      let s = '';
+      chain.forEach((n, i) => { if (i) s += `<line x1="${x0 + (i - 1) * dx}" y1="${cy}" x2="${x0 + i * dx}" y2="${cy}" style="stroke:var(--y);stroke-width:4"/>`; });
+      kids.forEach((c, j) => {
+        const y = 20 + j * rowH + (H - 30 - kids.length * rowH) / 2 + rowH / 2;
+        s += `<line x1="${x0 + k * dx}" y1="${cy}" x2="${kidX}" y2="${y}" style="stroke:var(--line);stroke-width:1.5"/>`;
+      });
+      chain.forEach((n, i) => {
+        const x = x0 + i * dx;
+        s += `<circle cx="${x}" cy="${cy}" r="17" style="fill:var(--y)"/><text x="${x}" y="${cy + 5}" text-anchor="middle" style="font:700 15px var(--mono);fill:#fff">${i ? n.letter.toUpperCase() : '•'}</text>`;
+        s += `<text x="${x}" y="${cy + 34}" text-anchor="middle" style="font:500 11px var(--mono);fill:var(--muted)">${U.fmt(n.count)}</text>`;
+      });
+      kids.forEach((c, j) => {
+        const y = 20 + j * rowH + (H - 30 - kids.length * rowH) / 2 + rowH / 2, r = 7 + 5 * Math.sqrt(c.count / maxC);
+        s += `<g data-letter="${c.letter}" style="cursor:pointer"><title>Add ${c.letter.toUpperCase()}</title><rect x="${kidX - 14}" y="${y - 12}" width="84" height="24" style="fill:transparent"/><circle cx="${kidX}" cy="${y}" r="${r.toFixed(1)}" style="fill:var(--surface);stroke:var(--ink);stroke-width:1.5"/>
+          <text x="${kidX}" y="${y + 4}" text-anchor="middle" style="font:700 11px var(--mono);fill:var(--ink)">${c.letter.toUpperCase()}</text>
+          <text x="${kidX + 20}" y="${y + 4}" style="font:500 11px var(--mono);fill:var(--muted)">${U.fmt(c.count)}${c.word ? ' ✓' : ''}</text></g>`;
+      });
+      return `<div class="scroll"><svg viewBox="0 0 ${W} ${H}" width="${W}" style="max-width:none;display:block" role="img" aria-label="Prefix tree branch for ${U.esc(S.prefix)}">${s}</svg></div>`;
+    }
+
+    function render(keepFocus) {
+      const chain = T.walk(S.prefix);
+      const node = chain ? chain[chain.length - 1] : null;
+      const sugg = node ? T.collect(node, 40) : [];
+      const right = !chain
+        ? `<p class="warn">No word starts with ${S.prefix.toUpperCase()}.</p><p class="dim">The walk from the root stopped: there is no child for the letter ${S.prefix.slice(-1).toUpperCase()}. That dead end is found in O(k) steps for a k-letter prefix.</p>`
+        : `<p class="lead">Yellow is the path you typed, one node per letter. The numbers count how many words pass through each node. Grey nodes are the letters that can come next; click one to extend the prefix.</p>
+           ${treeSVG(chain)}
+           ${node.word ? `<p class="ok">${node.word.toUpperCase()} is a complete word (a leaf at depth 5).</p>` : ''}`;
+      root.innerHTML = `<div class="card">
+        <h2>Autocomplete</h2>
+        ${U.pills([['Prefix tree (trie)', 'III'], ['Tree properties', 'III']])}
+        <p class="lead">Phone keyboards store words in a prefix tree. Words that start the same share one path, so typing a few letters jumps straight to every matching word.</p>
+        <div class="field"><label class="lbl" for="tr-in">Start typing</label><input id="tr-in" type="text" maxlength="5" value="${S.prefix.toUpperCase()}" autocomplete="off" spellcheck="false"></div>
+        <div><div class="big">${node ? U.fmt(node.count) : 0}<small>matching word${node && node.count === 1 ? '' : 's'}</small></div></div>
+        <div class="chips">${sugg.map((w) => `<button type="button" class="chip" data-word="${w}">${w}</button>`).join('')}${node && node.count > sugg.length ? `<span class="dim" style="font-size:13px;align-self:center">+${U.fmt(node.count - sugg.length)} more</span>` : ''}</div>
+        <div class="stats"><div><b>${U.fmt(letters)}</b><span>Letters in ${U.fmt(WG.WORDS.length)} words</span></div><div><b>${U.fmt(T.nodes - 1)}</b><span>Trie nodes needed (${Math.round((1 - (T.nodes - 1) / letters) * 100)}% saved by shared prefixes)</span></div></div>
+        <p class="note">Find a prefix: O(k) for k letters. List m matches: O(m · L). Height of this trie = 5, because every word has 5 letters.</p>
+      </div>
+      <div class="card"><h2>Prefix tree · ${S.prefix ? S.prefix.toUpperCase() + '…' : 'root'}</h2>${right}</div>`;
+      if (keepFocus) { const i = root.querySelector('#tr-in'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }
+    }
+
+    root.addEventListener('input', (e) => { if (e.target.id === 'tr-in') { S.prefix = U.clean(e.target.value); render(true); } });
+    root.addEventListener('click', (e) => {
+      const w = e.target.closest('[data-word]'); if (w) { S.prefix = w.dataset.word; render(); return; }
+      const l = e.target.closest('[data-letter]'); if (l && S.prefix.length < 5) { S.prefix += l.dataset.letter; render(); }
+    });
+    render();
+  }
+})(self.WG = self.WG || {});
+</script>
+<script>
+/* Tab: Critical words (cut sets, bridges and connectivity, Units III and IV). */
+(function (WG) {
+  const U = WG.ui;
+  WG.tabs.push({ id: 'critical', name: 'Critical words', unit: 'III/IV', mount });
+
+  function mount(root) {
+    const G = WG.G, adj = G.adj;
+    const crit = WG.criticalWords(adj);
+    const comps = WG.components(adj);
+    const cutOf = new Map(crit.cutVertices.map((c) => [c.v, c]));
+    const isolated = adj.filter((l) => !l.length).length;
+    const largest = Math.max(...comps.sizes);
+    const S = { v: crit.cutVertices[0].v, removed: false, msg: '' };
+
+    function ego(v) {
+      const r1 = adj[v].slice(0, 22), set1 = new Set(r1), r2 = [], parentOf = new Map();
+      for (const u of r1) {
+        let k = 0;
+        for (const w of adj[u]) {
+          if (w === v || set1.has(w) || parentOf.has(w)) continue;
+          parentOf.set(w, u); r2.push(w);
+          if (++k >= 3 || r2.length >= 36) break;
+        }
+        if (r2.length >= 36) break;
+      }
+      return { r1, r2, parentOf, more: adj[v].length - r1.length };
+    }
+
+    function svg() {
+      const v = S.v, { r1, r2, parentOf, more } = ego(v);
+      const cx = 330, cy = 235, R1 = 118, R2 = 200, pos = new Map([[v, [cx, cy]]]);
+      const ang = new Map();
+      r1.forEach((u, i) => { const a = -Math.PI / 2 + (i * 2 * Math.PI) / Math.max(r1.length, 1); ang.set(u, a); pos.set(u, [cx + R1 * Math.cos(a), cy + R1 * Math.sin(a)]); });
+      const byParent = new Map();
+      r2.forEach((w) => { const p = parentOf.get(w); if (!byParent.has(p)) byParent.set(p, []); byParent.get(p).push(w); });
+      byParent.forEach((list, p) => list.forEach((w, j) => { const a = ang.get(p) + (j - (list.length - 1) / 2) * 0.21; pos.set(w, [cx + R2 * Math.cos(a), cy + R2 * Math.sin(a)]); }));
+
+      let label = null, main = -1, pieces = [];
+      if (S.removed) {
+        const c = WG.components(adj, v);
+        label = c.comp;
+        const ids = [...new Set(adj[v].map((u) => c.comp[u]))];
+        main = ids.reduce((m, id) => (m < 0 || c.sizes[id] > c.sizes[m] ? id : m), -1);
+        pieces = ids.filter((id) => id !== main).map((id) => ({ id, size: c.sizes[id], words: G.words.filter((_, i) => c.comp[i] === id).slice(0, 14) }));
+      }
+      const colour = (u) => !label ? 'var(--surface)' : label[u] === main ? 'var(--tint)' : 'var(--tint-red)';
+      const strokeC = (u) => !label ? 'var(--ink)' : label[u] === main ? 'var(--blue)' : 'var(--red)';
+
+      let s = '';
+      const line = (a, b, st) => { const p = pos.get(a), q = pos.get(b); s += `<line x1="${p[0].toFixed(1)}" y1="${p[1].toFixed(1)}" x2="${q[0].toFixed(1)}" y2="${q[1].toFixed(1)}" style="${st}"/>`; };
+      for (let i = 0; i < r1.length; i++) for (let j = i + 1; j < r1.length; j++) if (adj[r1[i]].includes(r1[j])) line(r1[i], r1[j], 'stroke:var(--line);stroke-width:1');
+      r2.forEach((w) => line(parentOf.get(w), w, 'stroke:var(--line);stroke-width:1'));
+      if (!S.removed) r1.forEach((u) => line(v, u, 'stroke:var(--y);stroke-width:2'));
+      const node = (u, r, big) => {
+        const [x, y] = pos.get(u);
+        s += `<g data-word="${u}" style="cursor:pointer"><title>${G.words[u].toUpperCase()} · degree ${adj[u].length}</title><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r}" style="fill:${colour(u)};stroke:${strokeC(u)};stroke-width:1.5"/>
+          <text x="${x.toFixed(1)}" y="${(y + (big ? 5 : 3.5)).toFixed(1)}" text-anchor="middle" style="font:${big ? 700 : 600} ${big ? 13 : 9.5}px var(--mono);fill:var(--ink);text-transform:uppercase">${G.words[u].toUpperCase()}</text></g>`;
+      };
+      r2.forEach((w) => node(w, 17));
+      r1.forEach((u) => node(u, 20));
+      const [x, y] = pos.get(v);
+      s += `<circle cx="${x}" cy="${y}" r="30" style="fill:${S.removed ? 'var(--surface)' : 'var(--y)'};stroke:${S.removed ? 'var(--muted)' : 'var(--y)'};stroke-width:2;${S.removed ? 'stroke-dasharray:4 4' : ''}"/>
+        <text x="${x}" y="${y + 5}" text-anchor="middle" style="font:800 14px var(--mono);fill:${S.removed ? 'var(--muted)' : '#fff'};${S.removed ? 'text-decoration:line-through' : ''}">${G.words[v].toUpperCase()}</text>`;
+      if (more > 0) s += `<text x="${cx}" y="458" text-anchor="middle" style="font:11px var(--mono);fill:var(--muted)">+${more} more neighbours not drawn</text>`;
+      return { html: `<div class="scroll"><svg viewBox="0 0 660 466" width="100%" style="min-width:520px;display:block" role="img" aria-label="Neighbourhood of ${G.words[v]}">${s}</svg></div>`, pieces };
+    }
+
+    function render() {
+      const v = S.v, info = cutOf.get(v), deg = adj[v].length, g = svg();
+      const bridgeHere = crit.bridges.filter((b) => b.u === v || b.v === v);
+      let verdict;
+      if (!deg) verdict = `<p><b>${G.words[v].toUpperCase()}</b> has no one-letter neighbours: it is an isolated vertex, a component on its own.</p>`;
+      else if (!info) verdict = `<p><b>${G.words[v].toUpperCase()}</b> is <b>not</b> a cut vertex. Removing it leaves its ${deg} neighbours connected through other words.</p>`;
+      else verdict = `<p><b>${G.words[v].toUpperCase()}</b> is a <span class="warn">cut vertex</span>. Removing it splits the network into ${info.pieces} pieces and cuts off ${U.fmt(info.cutOff)} word${info.cutOff === 1 ? '' : 's'}.</p>`;
+      if (bridgeHere.length) verdict += `<p>Bridge${bridgeHere.length > 1 ? 's' : ''} at this word: ${bridgeHere.map((b) => `${G.words[b.u].toUpperCase()}–${G.words[b.v].toUpperCase()}`).join(', ')}. Each is a cut set of size one.</p>`;
+      const removedText = S.removed ? (g.pieces.length
+        ? g.pieces.map((p) => `<p><span class="warn">Cut off (${U.fmt(p.size)}):</span> ${p.words.map((w) => w.toUpperCase()).join(', ')}${p.size > p.words.length ? '…' : ''}</p>`).join('')
+        : `<p class="ok">Still connected. Every neighbour can reach the others without ${G.words[v].toUpperCase()}.</p>`) : '';
+      root.innerHTML = `<div class="card">
+        <h2>Critical words</h2>
+        ${U.pills([['Cut sets', 'III'], ['Connectivity', 'IV']])}
+        <p class="lead">Words joined by one-letter changes form one big network plus small islands. Some words are the only link between two groups: remove one and the network splits.</p>
+        <div class="stats"><div><b>${U.fmt(comps.sizes.length)}</b><span>Connected components</span></div><div><b>${U.fmt(largest)}</b><span>Words in the largest component</span></div>
+          <div><b>${U.fmt(isolated)}</b><span>Isolated words (degree 0)</span></div><div><b>${U.fmt(crit.cutVertices.length)} · ${U.fmt(crit.bridges.length)}</b><span>Cut vertices · bridges</span></div></div>
+        <div class="field"><label class="lbl" for="cr-in">Inspect any word</label><div class="row"><input id="cr-in" type="text" maxlength="5" list="wordlist" autocomplete="off" placeholder="word"><button class="btn sm" type="button" data-act="look">Show</button></div>${S.msg ? `<p class="warn">${U.esc(S.msg)}</p>` : ''}</div>
+        <div><h3 style="margin-bottom:8px">Most critical words</h3><div class="list">${crit.cutVertices.slice(0, 10).map((c) => `<button type="button" data-word="${c.v}" aria-pressed="${c.v === v}">${G.words[c.v]}<span>cuts off ${U.fmt(c.cutOff)}</span></button>`).join('')}</div></div>
+        <p class="note">Tarjan's DFS finds every bridge and cut vertex in one pass, O(V + E). A vertex v is a cut vertex when some DFS child's subtree has no back edge above v: low[child] ≥ tin[v].</p>
+      </div>
+      <div class="card">
+        <div class="row" style="justify-content:space-between"><h2>${G.words[v].toUpperCase()} <span class="dim" style="font:400 15px var(--body)">degree ${deg}</span></h2>
+          <button class="btn ${S.removed ? '' : 'primary'}" type="button" data-act="toggle" ${deg ? '' : 'disabled'}>${S.removed ? 'Put it back' : 'Remove this word'}</button></div>
+        ${verdict}${removedText}
+        ${deg ? g.html : ''}
+        <p class="dim" style="font-size:13px">Yellow: the selected word. After removal, blue neighbours stay in the main network and red ones are cut off. Click any word to inspect it.</p>
+      </div>`;
+    }
+
+    root.addEventListener('click', (e) => {
+      const a = e.target.closest('[data-act]');
+      if (a && a.dataset.act === 'toggle') { S.removed = !S.removed; render(); return; }
+      if (a && a.dataset.act === 'look') {
+        const w = U.clean(root.querySelector('#cr-in').value);
+        if (G.index.has(w)) { S.v = G.index.get(w); S.removed = false; S.msg = ''; } else S.msg = `${w.toUpperCase() || 'That'} is not in the word list.`;
+        render(); return;
+      }
+      const n = e.target.closest('[data-word]');
+      if (n) { S.v = +n.dataset.word; S.removed = false; S.msg = ''; render(); }
+    });
+    root.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.id === 'cr-in') root.querySelector('[data-act="look"]').click(); });
+    render();
+  }
+})(self.WG = self.WG || {});
+</script>
+<script>
+/* Tab: Huffman coding (prefix codes, Unit III). */
+(function (WG) {
+  const U = WG.ui;
+  WG.tabs.push({ id: 'huffman', name: 'Huffman', unit: 'III', mount });
+
+  function mount(root) {
+    const H = WG.H, F = WG.FREQ;
+    const S = { text: 'graph theory is everywhere', sel: 'e' };
+    const total = Object.values(F).reduce((a, b) => a + b, 0);
+    const dictBits = Object.entries(F).reduce((s, [c, f]) => s + f * H.codes[c].length, 0);
+
+    // Layout: leaves spaced evenly in left-to-right order, parents centred above children.
+    let leaves = 0, depth = 0;
+    (function lay(n, d) { n.d = d; depth = Math.max(depth, d); if (n.sym !== undefined) { n.x = leaves++; return; } lay(n.left, d + 1); lay(n.right, d + 1); n.x = (n.left.x + n.right.x) / 2; })(H.root, 0);
+
+    function treeSVG() {
+      const SX = 42, SY = 46, W = leaves * SX + 10, Ht = depth * SY + 70;
+      const px = (n) => 26 + n.x * SX, py = (n) => 22 + n.d * SY;
+      const code = H.codes[S.sel] || '';
+      const onPath = new Set();
+      let n = H.root; onPath.add(n);
+      for (const b of code) { n = b === '0' ? n.left : n.right; onPath.add(n); }
+      let e = '', nodes = '';
+      (function walk(n) {
+        if (n.sym !== undefined) return;
+        [[n.left, '0'], [n.right, '1']].forEach(([c, bit]) => {
+          const hot = onPath.has(n) && onPath.has(c);
+          e += `<line x1="${px(n)}" y1="${py(n)}" x2="${px(c)}" y2="${py(c)}" style="stroke:${hot ? 'var(--blue)' : 'var(--line)'};stroke-width:${hot ? 3 : 1.3}"/>`;
+          e += `<text x="${(px(n) + px(c)) / 2 + (bit === '0' ? -7 : 7)}" y="${(py(n) + py(c)) / 2 + 3}" text-anchor="middle" style="font:700 10px var(--mono);fill:${hot ? 'var(--blue)' : 'var(--muted)'}">${bit}</text>`;
+          walk(c);
+        });
+      })(H.root);
+      (function draw(n) {
+        const hot = onPath.has(n);
+        if (n.sym !== undefined) {
+          nodes += `<g data-sym="${n.sym}" style="cursor:pointer"><title>${n.sym.toUpperCase()}: ${H.codes[n.sym]}</title><rect x="${px(n) - 15}" y="${py(n) - 15}" width="30" height="30" rx="4" style="fill:${hot ? 'var(--blue)' : 'var(--g)'}"/>
+            <text x="${px(n)}" y="${py(n) + 5}" text-anchor="middle" style="font:800 14px var(--mono);fill:#fff">${n.sym.toUpperCase()}</text>
+            <text x="${px(n)}" y="${py(n) + 28}" text-anchor="middle" style="font:500 9px var(--mono);fill:var(--muted)">${U.fmt(n.w)}</text></g>`;
+          return;
+        }
+        nodes += `<circle cx="${px(n)}" cy="${py(n)}" r="${hot ? 5 : 4}" style="fill:${hot ? 'var(--blue)' : 'var(--ink)'}"/>`;
+        draw(n.left); draw(n.right);
+      })(H.root);
+      return `<div class="scroll"><svg viewBox="0 0 ${W} ${Ht}" width="${W}" style="max-width:none;display:block" role="img" aria-label="Huffman tree of letter frequencies">${e}${nodes}</svg></div>`;
+    }
+
+    function decode(bits) {
+      let out = '', n = H.root;
+      for (const b of bits) { n = b === '0' ? n.left : n.right; if (n.sym !== undefined) { out += n.sym; n = H.root; } }
+      return out;
+    }
+
+    function results() {
+      const letters = [...S.text.toLowerCase()].filter((c) => c >= 'a' && c <= 'z');
+      if (!letters.length) return '<p class="dim">Type some letters to encode.</p>';
+      const codes = letters.map((c) => H.codes[c]), bits = codes.join(''), fixed = letters.length * 5;
+      return `<div class="stats three"><div><b>${fixed}</b><span>Bits with a fixed 5-bit code</span></div><div><b>${bits.length}</b><span>Bits with Huffman</span></div><div><b>${Math.round((1 - bits.length / fixed) * 100)}%</b><span>Smaller</span></div></div>
+        <div><h3 style="margin-bottom:6px">Encoded (one shade per letter)</h3><div class="bits">${codes.map((c, i) => `<i title="${letters[i].toUpperCase()}">${c}</i>`).join('')}</div></div>
+        <p>Decoded back from the bits alone: <b style="font-family:var(--mono);text-transform:uppercase">${U.esc(decode(bits))}</b> <span class="ok">✓</span> No separators were needed because no code is the start of another.</p>`;
+    }
+
+    function render() {
+      const rows = Object.entries(F).sort((a, b) => b[1] - a[1]).map(([c, f]) => `<tr data-sym="${c}" style="cursor:pointer;${c === S.sel ? 'background:var(--tint)' : ''}"><td class="m"><b>${c.toUpperCase()}</b></td><td class="m">${U.fmt(f)}</td><td class="m">${H.codes[c]}</td><td class="m">${H.codes[c].length}</td></tr>`).join('');
+      root.innerHTML = `<div class="card">
+        <h2>Huffman coding</h2>
+        ${U.pills([['Prefix codes', 'III'], ['Huffman tree', 'III']])}
+        <p class="lead">Every letter normally costs 5 bits. Huffman gives common letters short codes and rare letters long ones, using how often each letter appears in all ${U.fmt(WG.WORDS.length)} words.</p>
+        <div class="field"><label class="lbl" for="hf-in">Type a message</label><textarea id="hf-in" spellcheck="false">${U.esc(S.text)}</textarea></div>
+        <div id="hf-out" style="display:grid;gap:12px">${results()}</div>
+        <div class="stats"><div><b>${U.fmt(total * 5)}</b><span>Bits to store every letter of the word list at 5 bits each</span></div><div><b>${U.fmt(dictBits)}</b><span>With Huffman (${Math.round((1 - dictBits / (total * 5)) * 100)}% smaller, ${(dictBits / total).toFixed(2)} bits per letter)</span></div></div>
+        <p class="note">Build: repeatedly merge the two least frequent nodes, O(n log n) for n = 26 letters. Encode and decode: one tree walk per letter.</p>
+      </div>
+      <div class="card">
+        <h2>The Huffman tree</h2>
+        <p class="lead">Each leaf is a letter with its count. Left edges are 0, right edges are 1, so a letter's code is its path from the root. Click a letter to trace it: <b style="font-family:var(--mono)">${S.sel.toUpperCase()} = ${H.codes[S.sel]}</b>.</p>
+        ${treeSVG()}
+        <div class="scroll" style="max-height:320px;overflow:auto"><table><tr><th>Letter</th><th>Count</th><th>Code</th><th>Bits</th></tr>${rows}</table></div>
+      </div>`;
+    }
+
+    root.addEventListener('input', (e) => { if (e.target.id === 'hf-in') { S.text = e.target.value; root.querySelector('#hf-out').innerHTML = results(); } });
+    root.addEventListener('click', (e) => { const s = e.target.closest('[data-sym]'); if (s) { S.sel = s.dataset.sym; render(); } });
+    render();
+  }
+})(self.WG = self.WG || {});
+</script>
+<script>
+/* Tab: Graph facts (terminology, handshaking lemma, representation, Euler, planarity, colouring bounds; Unit IV). */
+(function (WG) {
+  const U = WG.ui;
+  WG.tabs.push({ id: 'facts', name: 'Graph facts', unit: 'IV', mount });
+
+  function mount(root) {
+    const G = WG.G, adj = G.adj, V = adj.length, E = G.edges;
+    const deg = adj.map((l) => l.length), sum = deg.reduce((a, b) => a + b, 0);
+    const odd = deg.filter((d) => d % 2).length, maxDeg = Math.max(...deg);
+    const hubs = G.words.filter((_, i) => deg[i] === maxDeg);
+    const comps = WG.components(adj), edgeComps = comps.sizes.filter((s) => s > 1).length;
+    let clique = { key: '', words: [] };
+    G.buckets.forEach((b, key) => { if (b.length > clique.words.length) clique = { key, words: b.map((i) => G.words[i]) }; });
+    const hist = new Array(maxDeg + 1).fill(0); deg.forEach((d) => hist[d]++);
+    const S = { word: G.index.has('light') ? 'light' : G.words[deg.indexOf(maxDeg)] };
+
+    function histSVG() {
+      const W = 620, H = 180, max = Math.max(...hist), bw = (W - 40) / hist.length;
+      let s = '';
+      for (let y = 0; y <= 4; y++) { const v = Math.round((max * y) / 4), yy = H - 24 - ((H - 44) * y) / 4; s += `<line x1="34" x2="${W}" y1="${yy}" y2="${yy}" style="stroke:var(--line);stroke-width:1"/><text x="28" y="${yy + 3}" text-anchor="end" style="font:10px var(--mono);fill:var(--muted)">${v}</text>`; }
+      hist.forEach((v, d) => {
+        const h = ((H - 44) * v) / max, x = 36 + d * bw;
+        s += `<rect x="${x.toFixed(1)}" y="${(H - 24 - h).toFixed(1)}" width="${Math.max(bw - 2, 1).toFixed(1)}" height="${h.toFixed(1)}" rx="1" style="fill:${d % 2 ? 'var(--y)' : 'var(--g)'}"><title>degree ${d}: ${v} words</title></rect>`;
+        if (d % 2 === 0 || hist.length < 16) s += `<text x="${(x + bw / 2).toFixed(1)}" y="${H - 8}" text-anchor="middle" style="font:10px var(--mono);fill:var(--muted)">${d}</text>`;
+      });
+      return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Degree distribution">${s}</svg>`;
+    }
+
+    function lookup() {
+      const i = G.index.get(S.word);
+      if (i === undefined) return `<p class="warn">${U.esc(S.word.toUpperCase()) || 'That'} is not in the word list.</p>`;
+      const w = G.words[i], groups = [];
+      for (let p = 0; p < 5; p++) {
+        const key = w.slice(0, p) + '_' + w.slice(p + 1);
+        const others = G.buckets.get(key).filter((j) => j !== i).map((j) => G.words[j]);
+        if (others.length) groups.push(`<div><span class="pill">${key.toUpperCase()}</span> <span style="font:13px var(--mono)">${others.map((o) => o.toUpperCase()).join(', ')}</span></div>`);
+      }
+      return `<p><b style="font-family:var(--mono)">${w.toUpperCase()}</b> has degree <b>${deg[i]}</b>${deg[i] % 2 ? ' (odd)' : ' (even)'}.</p>
+        <div style="display:grid;gap:6px">${groups.join('') || '<p class="dim">No neighbours: an isolated vertex.</p>'}</div>
+        <p class="dim" style="font-size:13px">This is its adjacency list, grouped by the letter that changes. Each group is a clique: all its words are neighbours of each other too.</p>`;
+    }
+
+    function render() {
+      const cells = V * V, filled = 2 * E;
+      root.innerHTML = `<div class="card">
+        <h2>Graph facts</h2>
+        ${U.pills([['Terminology & representation', 'IV'], ['Handshaking lemma', 'IV'], ['Euler · planar · colouring', 'IV']])}
+        <p class="lead">Live numbers for the whole word graph: ${U.fmt(V)} words as vertices, one-letter changes as edges.</p>
+        <div class="stats">
+          <div><b>${U.fmt(V)}</b><span>Vertices (words)</span></div><div><b>${U.fmt(E)}</b><span>Edges (one-letter links)</span></div>
+          <div><b>${U.fmt(sum)} = 2 × ${U.fmt(E)}</b><span>Handshaking lemma: sum of degrees <span class="ok">✓</span></span></div><div><b>${U.fmt(odd)}</b><span>Odd-degree vertices: always an even number <span class="ok">✓</span></span></div>
+          <div><b>${(sum / V).toFixed(2)}</b><span>Average degree</span></div><div><b>${maxDeg}</b><span>Highest degree: ${hubs.slice(0, 3).map((h) => h.toUpperCase()).join(', ')}</span></div>
+        </div>
+        <p><b>Euler path?</b> <span class="warn">No.</span> ${edgeComps > 1 ? `The edges are spread over ${U.fmt(edgeComps)} separate components, and` : ''} ${U.fmt(odd)} vertices have odd degree. An Euler path needs a connected graph with 0 or 2 odd vertices.</p>
+        <p><b>Cliques:</b> words in the bucket <span class="pill">${clique.key.toUpperCase()}</span> (${clique.words.map((w) => w.toUpperCase()).join(', ')}) are all one letter apart, forming K<sub>${clique.words.length}</sub>.</p>
+        <p><b>Planar?</b> <span class="warn">No.</span> K<sub>${clique.words.length}</sub> contains K<sub>5</sub>, so by Kuratowski's theorem the graph cannot be drawn without crossings, even though E ≤ 3V − 6 holds (${U.fmt(E)} ≤ ${U.fmt(3 * V - 6)}). That test is necessary, not sufficient.</p>
+        <p><b>Colouring bound:</b> the clique needs ${clique.words.length} different colours, so the chromatic number is at least ${clique.words.length}. <b>Bipartite?</b> No: any 3 words in one bucket form a triangle, an odd cycle.</p>
+        <p><b>Representation:</b> an adjacency matrix would need ${U.fmt(cells)} cells with only ${U.fmt(filled)} ones (${((filled / cells) * 100).toFixed(2)}% filled). An adjacency list stores just the ${U.fmt(filled)} entries: O(V + E) instead of O(V²).</p>
+      </div>
+      <div class="card">
+        <h2>Degree distribution</h2>
+        <p class="lead">How many words have each number of one-letter neighbours. Yellow bars are odd degrees.</p>
+        ${histSVG()}
+        <div class="field"><label class="lbl" for="gf-in">Look up a word's neighbours</label><div class="row"><input id="gf-in" type="text" maxlength="5" list="wordlist" value="${S.word.toUpperCase()}" autocomplete="off"><button class="btn sm" type="button" data-act="look">Show</button></div></div>
+        <div id="gf-out" style="display:grid;gap:10px">${lookup()}</div>
+      </div>`;
+    }
+    root.addEventListener('click', (e) => { const a = e.target.closest('[data-act="look"]'); if (a) { S.word = U.clean(root.querySelector('#gf-in').value); root.querySelector('#gf-out').innerHTML = lookup(); } });
+    root.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.id === 'gf-in') root.querySelector('[data-act="look"]').click(); });
+    render();
+  }
+})(self.WG = self.WG || {});
+</script>
+<script>WG.start();</script>
